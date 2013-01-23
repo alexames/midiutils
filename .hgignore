@@ -1,0 +1,12 @@
+syntax:glob
+
+Debug/*
+Release/*
+midi/Debug/*
+midi/Release/*
+
+*.mid
+*.sdf
+*.opensdf
+*.suo
+
