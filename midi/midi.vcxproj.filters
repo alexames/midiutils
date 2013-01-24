@@ -26,9 +26,15 @@
     <ClCompile Include="midiutil.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="midistreamimple.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="midi.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="midistreamimpl.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

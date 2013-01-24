@@ -1,9 +1,22 @@
 #include "midi.hpp"
+#include "midistreamimpl.hpp"
 
-//#include <windows.h>
-//#include <mmsystem.h>
-
-midi_Error Midifile_play(midi_File& midi)
+namespace midi
 {
-	return midi_NoError;
+
+MidiStream::MidiStream(MidiFile& midi)
+	: impl(createStreamImpl(midi))
+{
 }
+
+MidiStream::~MidiStream()
+{
+	destroyStreamImpl(impl);
+}
+
+void MidiStream::play()
+{
+	playStreamImpl(impl);
+}
+
+} // namespace midi

@@ -5,7 +5,8 @@
 
 using namespace std;
 
-#define midi_Check(statement) do { midi_Error error_ = (statement); if (error_ != midi_NoError) return error_; } while(false)
+namespace midi
+{
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -31,47 +32,47 @@ static void writeUInt16be(ostream& out, unsigned short val)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void midi_writeNoteEndEvent(midi_Event::NoteEndEvent event, ostream& out)
+static void writeNoteEndEvent(Event::NoteEndEvent event, ostream& out)
 {
 	out.put(event.noteNumber);
 	out.put(event.velocity);
 }
 
-static void midi_writeNoteBeginEvent(midi_Event::NoteBeginEvent event, ostream& out)
+static void writeNoteBeginEvent(Event::NoteBeginEvent event, ostream& out)
 {
 	out.put(event.noteNumber);
 	out.put(event.velocity);
 }
 
-static void midi_writeVelocityChangeEvent(midi_Event::VelocityChangeEvent event, ostream& out)
+static void writeVelocityChangeEvent(Event::VelocityChangeEvent event, ostream& out)
 {
 	out.put(event.noteNumber);
 	out.put(event.velocity);
 }
 
-static void midi_writeControllerChangeEvent(midi_Event::ControllerChangeEvent event, ostream& out)
+static void writeControllerChangeEvent(Event::ControllerChangeEvent event, ostream& out)
 {
 	out.put(event.controllerNumber);
 	out.put(event.velocity);
 }
 
-static void midi_writeProgramChangeEvent(midi_Event::ProgramChangeEvent event, ostream& out)
+static void writeProgramChangeEvent(Event::ProgramChangeEvent event, ostream& out)
 {
 	out.put(event.newProgramNumber);
 }
 
-static void midi_writeChannelPressureChangeEvent(midi_Event::ChannelPressureChangeEvent event, ostream& out)
+static void writeChannelPressureChangeEvent(Event::ChannelPressureChangeEvent event, ostream& out)
 {
 	out.put(event.channelNumber);
 }
 
-static void midi_writePitchWheelChangeEvent(midi_Event::PitchWheelChangeEvent event, ostream& out)
+static void writePitchWheelChangeEvent(Event::PitchWheelChangeEvent event, ostream& out)
 {
 	out.put(event.bottom);
 	out.put(event.top);
 }
 
-static void midi_writeMetaEvent(midi_Event::MetaEvent event, ostream& out)
+static void writeMetaEvent(const Event::MetaEvent event, ostream& out)
 {
 	out.put(event.command);
 	out.put(event.length);
@@ -79,7 +80,7 @@ static void midi_writeMetaEvent(midi_Event::MetaEvent event, ostream& out)
 		out.put(event.data[i]);
 }
 
-static void midi_writeEventTime(unsigned int timeDelta, ostream& out)
+static void writeEventTime(unsigned int timeDelta, ostream& out)
 {
 	if (timeDelta > (0x7F * 0x7F * 0x7F))
 	{
@@ -96,53 +97,52 @@ static void midi_writeEventTime(unsigned int timeDelta, ostream& out)
 	out.put(timeDelta & 0x7F);
 }
 
-static midi_Error midi_writeEvent(midi_Event& event, ostream& out, unsigned char& previousCommandByte)
+static void writeEvent(const Event& event, ostream& out, unsigned char& previousCommandByte)
 {
-	midi_writeEventTime(event.timeDelta, out);
+	writeEventTime(event.timeDelta, out);
 	unsigned char commandByte = event.command | event.channel;
-	if (commandByte != previousCommandByte || event.command == midi_Event::Meta)
+	if (commandByte != previousCommandByte || event.command == Event::Meta)
 	{
 		out.put(commandByte);
 		previousCommandByte = commandByte;
 	}
 	switch(event.command)
 	{
-	case midi_Event::NoteEnd:
-		midi_writeNoteEndEvent(event.noteEnd, out);
+	case Event::NoteEnd:
+		writeNoteEndEvent(event.noteEnd, out);
 		break;
-	case midi_Event::NoteBegin:
-		midi_writeNoteBeginEvent(event.noteBegin, out);
+	case Event::NoteBegin:
+		writeNoteBeginEvent(event.noteBegin, out);
 		break;
-	case midi_Event::VelocityChange:
-		midi_writeVelocityChangeEvent(event.velocityChange, out);
+	case Event::VelocityChange:
+		writeVelocityChangeEvent(event.velocityChange, out);
 		break;
-	case midi_Event::ControllerChange:
-		midi_writeControllerChangeEvent(event.controllerChange, out);
+	case Event::ControllerChange:
+		writeControllerChangeEvent(event.controllerChange, out);
 		break;
-	case midi_Event::ProgramChange:
-		midi_writeProgramChangeEvent(event.programChange, out);
+	case Event::ProgramChange:
+		writeProgramChangeEvent(event.programChange, out);
 		break;
-	case midi_Event::ChannelPressureChange:
-		midi_writeChannelPressureChangeEvent(event.channelPressureChange, out);
+	case Event::ChannelPressureChange:
+		writeChannelPressureChangeEvent(event.channelPressureChange, out);
 		break;
-	case midi_Event::PitchWheelChange:
-		midi_writePitchWheelChangeEvent(event.pitchWheelChange, out);
+	case Event::PitchWheelChange:
+		writePitchWheelChangeEvent(event.pitchWheelChange, out);
 		break;
-	case midi_Event::Meta:
-		midi_writeMetaEvent(event.meta, out);
+	case Event::Meta:
+		writeMetaEvent(event.meta, out);
 		break;
 	default:
-		return midi_InvalidEvent;
+		throw std::exception();
 	}
-	return midi_NoError;
 }
 
-static unsigned int midi_getTrackLength(midi_Track& track)
+static unsigned int getTrackLength(const Track& track)
 {
 	unsigned int length = 0;
 
 	unsigned char previousCommandByte = 0;
-	for (midi_Event& event : track.events)
+	for (const Event& event : track.events)
 	{
 		// Time delta
 		if (event.timeDelta > (0x7f * 0x7f * 0x7f))
@@ -156,7 +156,7 @@ static unsigned int midi_getTrackLength(midi_Track& track)
 
 		// Command 
 		unsigned char commandByte = event.command | event.channel;
-		if (commandByte != previousCommandByte || event.command == midi_Event::Meta)
+		if (commandByte != previousCommandByte || event.command == Event::Meta)
 		{
 			length += 1;
 			previousCommandByte = commandByte;
@@ -166,20 +166,20 @@ static unsigned int midi_getTrackLength(midi_Track& track)
 		switch(event.command)
 		{
 		// One data byte
-		case midi_Event::ProgramChange:
-		case midi_Event::ChannelPressureChange:
+		case Event::ProgramChange:
+		case Event::ChannelPressureChange:
 			length += 1;
 			break;
 		// Two data bytes
-		case midi_Event::NoteEnd:
-		case midi_Event::NoteBegin:
-		case midi_Event::VelocityChange:
-		case midi_Event::ControllerChange:
-		case midi_Event::PitchWheelChange:
+		case Event::NoteEnd:
+		case Event::NoteBegin:
+		case Event::VelocityChange:
+		case Event::ControllerChange:
+		case Event::PitchWheelChange:
 			length += 2;
 			break;
 		// Variable data bytes
-		case midi_Event::Meta:
+		case Event::Meta:
 			length += 2 + event.meta.length;
 			break;
 		}
@@ -188,37 +188,28 @@ static unsigned int midi_getTrackLength(midi_Track& track)
 	return length;
 }
 
-static midi_Error midi_writeTrack(midi_Track& track, std::ostream& out)
+static void writeTrack(const Track& track, std::ostream& out)
 {
 	writeUInt32be(out, 'MTrk');
-	writeUInt32be(out, midi_getTrackLength(track));
+	writeUInt32be(out, getTrackLength(track));
 	unsigned char previousCommandByte = 0;
-	for (midi_Event& event : track.events)
+	for (const Event& event : track.events)
 	{
-		midi_Check(midi_writeEvent(event, out, previousCommandByte));
+		writeEvent(event, out, previousCommandByte);
 	}
-	return midi_NoError;
 }
 
-midi_Error midi_writeFile(midi_File& midi, std::ostream& out)
+void writeFile(const MidiFile& midi, std::ostream& out)
 {
-	try 
+	writeUInt32be(out, 'MThd');
+	writeUInt32be(out,  0x0006);
+	writeUInt16be(out, midi.format);
+	writeUInt16be(out, midi.tracks.size());
+	writeUInt16be(out, midi.ticks);
+	for (const Track& track : midi.tracks)
 	{
-		out.exceptions(ostream::failbit | ostream::badbit);
-
-		writeUInt32be(out, 'MThd');
-		writeUInt32be(out,  0x0006);
-		writeUInt16be(out, midi.header.format);
-		writeUInt16be(out, midi.tracks.size());
-		writeUInt16be(out, midi.header.ticks);
-		for (midi_Track& track : midi.tracks)
-		{
-			midi_Check(midi_writeTrack(track, out));
-		}
+		writeTrack(track, out);
 	}
-	catch (std::exception&)
-	{
-		return midi_WriteError;
-	}
-	return midi_NoError;
 }
+
+} // namespace midi

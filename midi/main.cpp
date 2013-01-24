@@ -8,19 +8,14 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	string FILENAME = "..\\example9.mid";
-	ifstream file(FILENAME, ios::binary);
-	midi_File midi;
-	midi_Error error = midi_readFile(midi, file);
-	if (error == midi_NoError)
-	{
-		ofstream output("..\\output.mid", ios::binary);
-		error = midi_writeFile(midi, output);
-	}
+	const string filename = "..\\example9.mid";
+	midi::MidiFile midi;
 	
-	if (error != midi_NoError)
-	{
-		fprintf(stderr, "%s\n", midi_errorString(error));
-	}
+	ifstream file(filename, ios::binary);
+	midi::readFile(midi, file);
+	
+	ofstream output("..\\output.mid", ios::binary);
+	midi::writeFile(midi, output);
+	
 	return 0;
 }
