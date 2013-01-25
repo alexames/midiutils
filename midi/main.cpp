@@ -20,5 +20,7 @@ int main(int argc, char* argv[])
 	midi::MidiStream stream(midi);
 	stream.play();
 	
+	while (true) ;
+
 	return 0;
 }
