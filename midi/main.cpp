@@ -14,8 +14,11 @@ int main(int argc, char* argv[])
 	ifstream file(filename, ios::binary);
 	midi::readFile(midi, file);
 	
-	ofstream output("..\\output.mid", ios::binary);
-	midi::writeFile(midi, output);
+	//ofstream output("..\\output.mid", ios::binary);
+	//midi::writeFile(midi, output);
+
+	midi::MidiStream stream(midi);
+	stream.play();
 	
 	return 0;
 }

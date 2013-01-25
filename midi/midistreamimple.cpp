@@ -23,59 +23,97 @@ static unsigned short swapEndianness(unsigned short val)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void CALLBACK example9_callback(HMIDIOUT out, UINT msg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
-{
-	HANDLE* event = (HANDLE*)dwInstance;
-    switch (msg)
-    {
-    case MOM_DONE:
-        SetEvent(*event);
-        break;
-    case MOM_POSITIONCB:
-    case MOM_OPEN:
-    case MOM_CLOSE:
-        break;
-    }
-}
-
 struct MidiStreamImpl
 {
-	HMIDISTRM out;
-	HANDLE event;
-	MIDIHDR mhdr;
-	unsigned int device;
+	HMIDISTRM midiStreamHandle;
+	HANDLE eventHandle;
+	MIDIHDR midiHeader;
+	unsigned int deviceHandle;
 	char* streambuf;
 	unsigned int streambufsize;
 };
 
+void CALLBACK midiCallback(HMIDIOUT handle, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
+{
+	HANDLE eventHandle = (HANDLE)dwParam1;
+    LPMIDIHDR   lpMIDIHeader;
+    MIDIEVENT * lpMIDIEvent;
+
+    /* Determine why Windows called me */
+    switch (uMsg)
+    {
+        /* Got some event with its MEVT_F_CALLBACK flag set */
+        case MOM_POSITIONCB:
+
+            /* Assign address of MIDIHDR to a LPMIDIHDR variable. Makes it easier to access the
+               field that contains the pointer to our block of MIDI events */
+            lpMIDIHeader = (LPMIDIHDR)dwParam1;
+
+            /* Get address of the MIDI event that caused this call */
+            lpMIDIEvent = (MIDIEVENT *)&(lpMIDIHeader->lpData[lpMIDIHeader->dwOffset]);
+
+            /* Normally, if you had several different types of events with the
+               MEVT_F_CALLBACK flag set, you'd likely now do a switch on the highest
+               byte of the dwEvent field, assuming that you need to do different
+               things for different types of events.
+            */
+
+            break;
+
+        /* The last event in the MIDIHDR has played */
+        case MOM_DONE:
+
+            /* Wake up main() */
+            SetEvent(eventHandle);
+
+            break;
+
+
+        /* Process these messages if you desire */
+        case MOM_OPEN:
+        case MOM_CLOSE:
+
+            break;
+    }
+}
+
 MidiStreamImpl* createStreamImpl(MidiFile& midi)
 {
+	static unsigned long myNotes[] = {0, 0, 0x007F3C90, 192, 0, 0x00003C90};
+
 	MidiStreamImpl* stream = new MidiStreamImpl();
-	midiStreamOpen(&stream->out, &stream->device, 1, (DWORD)example9_callback, (DWORD_PTR)&stream->event, CALLBACK_FUNCTION);
 	
+	stream->eventHandle = CreateEvent(0, FALSE, FALSE, 0);
+
+	midiStreamOpen(&stream->midiStreamHandle, (LPUINT)&stream->deviceHandle, 1, (DWORD)midiCallback, (DWORD)stream->eventHandle, CALLBACK_FUNCTION);
+
 	MIDIPROPTIMEDIV prop;
 	prop.cbStruct = sizeof(MIDIPROPTIMEDIV);
-	prop.dwTimeDiv = swapEndianness(midi.ticks);
-	midiStreamProperty(stream->out, (LPBYTE)&prop, MIDIPROP_SET|MIDIPROP_TIMEDIV);
+	prop.dwTimeDiv = 96;
+	midiStreamProperty(stream->midiStreamHandle, (LPBYTE)&prop, MIDIPROP_SET|MIDIPROP_TIMEDIV);
 
-	stream->mhdr.lpData = stream->streambuf;
-	stream->mhdr.dwBufferLength = stream->mhdr.dwBytesRecorded = stream->streambufsize;
-	stream->mhdr.dwFlags = 0;
-	midiOutPrepareHeader((HMIDIOUT)stream->out, &stream->mhdr, sizeof(MIDIHDR));
+	stream->midiHeader.lpData = (LPSTR)&myNotes[0];
+	stream->midiHeader.dwBufferLength = stream->midiHeader.dwBytesRecorded = sizeof(myNotes);
+	stream->midiHeader.dwFlags = 0;
+	midiOutPrepareHeader((HMIDIOUT)stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
 
+	midiStreamOut(stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
+	
 	return stream;
 }
 
 void destroyStreamImpl(MidiStreamImpl* stream)
 {
-	midiOutReset((HMIDIOUT)stream->out);
-	midiOutUnprepareHeader((HMIDIOUT)stream->out, &stream->mhdr, sizeof(MIDIHDR));
-	midiStreamClose(stream->out);
+    midiOutUnprepareHeader((HMIDIOUT)stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
+    midiStreamClose(stream->midiStreamHandle);
+    CloseHandle(stream->eventHandle);
+	delete stream;
 }
 
 void playStreamImpl(MidiStreamImpl* stream)
 {
-	midiStreamRestart(stream->out);
+	midiStreamRestart(stream->midiStreamHandle);
+	WaitForSingleObject(stream->eventHandle, INFINITE);
 }
 
 } // namespace midi
