@@ -8,7 +8,7 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	const string filename = "..\\example9.mid";
+	const string filename = "..\\..\\..\\data\\example.mid";
 	midi::MidiFile midi;
 	
 	ifstream file(filename, ios::binary);

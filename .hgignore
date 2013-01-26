@@ -1,11 +1,7 @@
 syntax:glob
 
-Debug/*
-Release/*
-midi/Debug/*
-midi/Release/*
+bin/*
 
-*.mid
 *.sdf
 *.opensdf
 *.suo
