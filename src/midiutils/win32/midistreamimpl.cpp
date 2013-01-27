@@ -12,7 +12,7 @@ using namespace std;
 namespace midi
 {
 
-struct MidiEventBuffer;
+class MidiEventBuffer;
 
 struct MidiStreamImpl
 {

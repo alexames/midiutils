@@ -46,7 +46,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..\src\midi;..\..\..\pub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\midiutils;..\..\..\pub;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -66,9 +66,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\midi\midiread.cpp" />
-    <ClCompile Include="..\..\..\src\midi\midiwrite.cpp" />
-    <ClCompile Include="..\..\..\src\midi\win32\midistreamimpl.cpp" />
+    <ClCompile Include="..\..\..\src\midiutils\midiread.cpp" />
+    <ClCompile Include="..\..\..\src\midiutils\midiwrite.cpp" />
+    <ClCompile Include="..\..\..\src\midiutils\win32\midistreamimpl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\pub\midi.hpp" />

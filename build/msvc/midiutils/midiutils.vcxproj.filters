@@ -14,13 +14,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\midi\midiread.cpp">
+    <ClCompile Include="..\..\..\src\midiutils\midiread.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\midi\midiwrite.cpp">
+    <ClCompile Include="..\..\..\src\midiutils\midiwrite.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\midi\win32\midistreamimpl.cpp">
+    <ClCompile Include="..\..\..\src\midiutils\win32\midistreamimpl.cpp">
       <Filter>src\win</Filter>
     </ClCompile>
   </ItemGroup>

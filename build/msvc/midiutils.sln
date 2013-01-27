@@ -8,6 +8,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "main", "main\main.vcxproj",
 		{3BA97229-E30E-4F9E-B861-32381E3451DE} = {3BA97229-E30E-4F9E-B861-32381E3451DE}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "luamidiutils", "luamidiutils\luamidiutils.vcxproj", "{DC988501-53F7-438A-87C3-47671D82F56F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -22,6 +24,10 @@ Global
 		{BC93FF28-BE91-4D14-A88D-0E4823343811}.Debug|Win32.Build.0 = Debug|Win32
 		{BC93FF28-BE91-4D14-A88D-0E4823343811}.Release|Win32.ActiveCfg = Release|Win32
 		{BC93FF28-BE91-4D14-A88D-0E4823343811}.Release|Win32.Build.0 = Release|Win32
+		{DC988501-53F7-438A-87C3-47671D82F56F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DC988501-53F7-438A-87C3-47671D82F56F}.Debug|Win32.Build.0 = Debug|Win32
+		{DC988501-53F7-438A-87C3-47671D82F56F}.Release|Win32.ActiveCfg = Release|Win32
+		{DC988501-53F7-438A-87C3-47671D82F56F}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
