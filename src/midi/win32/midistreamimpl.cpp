@@ -37,29 +37,6 @@ private:
 	
 };
 
-MidiEventBuffer::MidiEventBuffer()
-	: eventDoubleBuffer()
-	, bytesFilled()
-	, readyBufferIndex(0)
-{
-}
-
-bool MidiEventBuffer::fillBuffer()
-{
-	readyBufferIndex = 1 - readyBufferIndex;
-	return fillBufferInternal(eventDoubleBuffer[readyBufferIndex], bytesFilled[readyBufferIndex]);
-}
-
-char* MidiEventBuffer::getReadyBuffer()
-{
-	return eventDoubleBuffer[readyBufferIndex];
-}
-
-int MidiEventBuffer::getBytesFilled()
-{
-	return bytesFilled[readyBufferIndex];
-}
-
 struct MidiFileEventBuffer : public MidiEventBuffer
 {
 public:
@@ -74,6 +51,38 @@ private:
 	std::vector<unsigned int> m_indicies;
 	std::vector<unsigned int> m_absoluteTimes;
 };
+
+struct MidiStreamImpl
+{
+	HMIDISTRM midiStreamHandle;
+	HANDLE eventHandle;
+	MIDIHDR midiHeader;
+	MidiEventBuffer* midiEventBuffer;
+};
+
+MidiEventBuffer::MidiEventBuffer()
+	: eventDoubleBuffer()
+	, bytesFilled()
+	, readyBufferIndex(0)
+{
+}
+
+bool MidiEventBuffer::fillBuffer()
+{
+	bytesFilled[readyBufferIndex] = 0;
+	readyBufferIndex = 1 - readyBufferIndex;
+	return fillBufferInternal(eventDoubleBuffer[readyBufferIndex], bytesFilled[readyBufferIndex]);
+}
+
+char* MidiEventBuffer::getReadyBuffer()
+{
+	return eventDoubleBuffer[readyBufferIndex];
+}
+
+int MidiEventBuffer::getBytesFilled()
+{
+	return bytesFilled[readyBufferIndex];
+}
 
 MidiFileEventBuffer::MidiFileEventBuffer(const MidiFile& midi)
 	: m_midi(&midi)
@@ -101,23 +110,23 @@ static void writeNoteBeginEventToBuffer(const Event::NoteBeginEvent& event, char
 
 static void writeVelocityChangeEventToBuffer(const Event::VelocityChangeEvent& event, char*& out, unsigned int& bytesFilled)
 {
-	*out++ = 0;
-	*out++ = 0;
+	*out++ = event.noteNumber;
+	*out++ = event.velocity;
 	*out++ = 0;
 	bytesFilled+=3;
 }
 
 static void writeControllerChangeEventToBuffer(const Event::ControllerChangeEvent& event, char*& out, unsigned int& bytesFilled)
 {
-	*out++ = 0;
-	*out++ = 0;
+	*out++ = event.controllerNumber;
+	*out++ = event.velocity;
 	*out++ = 0;
 	bytesFilled+=3;
 }
 
 static void writeProgramChangeEventToBuffer(const Event::ProgramChangeEvent& event, char*& out, unsigned int& bytesFilled)
 {
-	*out++ = 0;
+	*out++ = event.newProgramNumber;
 	*out++ = 0;
 	*out++ = 0;
 	bytesFilled+=3;
@@ -125,7 +134,7 @@ static void writeProgramChangeEventToBuffer(const Event::ProgramChangeEvent& eve
 
 static void writeChannelPressureChangeEventToBuffer(const Event::ChannelPressureChangeEvent& event, char*& out, unsigned int& bytesFilled)
 {
-	*out++ = 0;
+	*out++ = event.channelNumber;
 	*out++ = 0;
 	*out++ = 0;
 	bytesFilled+=3;
@@ -220,15 +229,7 @@ bool MidiFileEventBuffer::fillBufferInternal(char* out, unsigned int& bytesFille
 	return !songFinished;
 }
 
-struct MidiStreamImpl
-{
-	HMIDISTRM midiStreamHandle;
-	HANDLE eventHandle;
-	MIDIHDR midiHeader;
-	MidiEventBuffer* midiEventBuffer;
-};
-
-void CALLBACK midiStreamEventCallback(HMIDIOUT handle, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
+static void CALLBACK midiStreamEventCallback(HMIDIOUT handle, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
 {
 	MidiStreamImpl* stream = (MidiStreamImpl*)dwInstance;	
 	switch (uMsg)
@@ -247,33 +248,7 @@ void CALLBACK midiStreamEventCallback(HMIDIOUT handle, UINT uMsg, DWORD dwInstan
     }
 }
 
-MidiStreamImpl* createStreamImpl(MidiFile& midi)
-{
-	MidiStreamImpl* stream = new MidiStreamImpl();
-	stream->midiEventBuffer = new MidiFileEventBuffer(midi);
-
-	stream->eventHandle = CreateEvent(0, FALSE, FALSE, 0);
-	
-	unsigned int deviceHandle = 0;
-	midiStreamOpen(&stream->midiStreamHandle, (LPUINT)&deviceHandle, 1, (DWORD)midiStreamEventCallback, (DWORD)stream, CALLBACK_FUNCTION);
-
-	MIDIPROPTIMEDIV prop;
-	prop.cbStruct = sizeof(MIDIPROPTIMEDIV);
-	prop.dwTimeDiv = 96;
-	midiStreamProperty(stream->midiStreamHandle, (LPBYTE)&prop, MIDIPROP_SET|MIDIPROP_TIMEDIV);
-	
-	return stream;
-}
-
-void destroyStreamImpl(MidiStreamImpl* stream)
-{
-    midiOutUnprepareHeader((HMIDIOUT)stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
-    midiStreamClose(stream->midiStreamHandle);
-    CloseHandle(stream->eventHandle);
-	delete stream;
-}
-
-DWORD WINAPI prepareBufferThreadCallback(LPVOID lpParam) 
+static DWORD WINAPI prepareBufferThreadCallback(LPVOID lpParam) 
 {
 	MidiStreamImpl* stream = (MidiStreamImpl*)lpParam;
 
@@ -295,6 +270,34 @@ DWORD WINAPI prepareBufferThreadCallback(LPVOID lpParam)
 	}
 
 	return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+MidiStreamImpl* createStreamImpl(MidiFile& midi)
+{
+	MidiStreamImpl* stream = new MidiStreamImpl();
+	stream->midiEventBuffer = new MidiFileEventBuffer(midi);
+
+	stream->eventHandle = CreateEvent(0, FALSE, FALSE, 0);
+	
+	unsigned int deviceHandle = 0;
+	midiStreamOpen(&stream->midiStreamHandle, (LPUINT)&deviceHandle, 1, (DWORD)midiStreamEventCallback, (DWORD)stream, CALLBACK_FUNCTION);
+
+	MIDIPROPTIMEDIV prop;
+	prop.cbStruct = sizeof(MIDIPROPTIMEDIV);
+	prop.dwTimeDiv = midi.ticks;
+	midiStreamProperty(stream->midiStreamHandle, (LPBYTE)&prop, MIDIPROP_SET|MIDIPROP_TIMEDIV);
+	
+	return stream;
+}
+
+void destroyStreamImpl(MidiStreamImpl* stream)
+{
+    midiOutUnprepareHeader((HMIDIOUT)stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
+    midiStreamClose(stream->midiStreamHandle);
+    CloseHandle(stream->eventHandle);
+	delete stream;
 }
 
 void playStreamImpl(MidiStreamImpl* stream)
