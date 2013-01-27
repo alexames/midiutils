@@ -13,45 +13,7 @@ using namespace std;
 namespace midi
 {
 
-static void writeUInt32le(char*& out, unsigned int val)
-{
-	*out++ = static_cast<char>(val >> 0);
-	*out++ = static_cast<char>(val >> 8);
-	*out++ = static_cast<char>(val >> 16);
-	*out++ = static_cast<char>(val >> 24);
-}
-
-struct MidiEventBuffer
-{
-public:
-	MidiEventBuffer();
-	bool fillBuffer();
-	char* getReadyBuffer();
-	int getBytesFilled();
-
-private:
-	virtual bool fillBufferInternal(char* buffer, unsigned int& bytesFilled) = 0;
-
-	char eventDoubleBuffer[2][4096];
-	unsigned int bytesFilled[2];
-	int readyBufferIndex;
-	
-};
-
-struct MidiFileEventBuffer : public MidiEventBuffer
-{
-public:
-	MidiFileEventBuffer(const MidiFile& midi);
-
-private:
-
-	virtual bool fillBufferInternal(char* buffer, unsigned int& bytesFilled);
-
-	const MidiFile* m_midi;
-	unsigned int m_lastEventTime;
-	std::vector<unsigned int> m_indicies;
-	std::vector<unsigned int> m_absoluteTimes;
-};
+struct MidiEventBuffer;
 
 struct MidiStreamImpl
 {
@@ -61,36 +23,14 @@ struct MidiStreamImpl
 	MidiEventBuffer* midiEventBuffer;
 };
 
-MidiEventBuffer::MidiEventBuffer()
-	: eventDoubleBuffer()
-	, bytesFilled()
-	, readyBufferIndex(0)
-{
-}
+////////////////////////////////////////////////////////////////////////////////
 
-bool MidiEventBuffer::fillBuffer()
+static void writeUInt32le(char*& out, unsigned int val)
 {
-	bytesFilled[readyBufferIndex] = 0;
-	readyBufferIndex = 1 - readyBufferIndex;
-	return fillBufferInternal(eventDoubleBuffer[readyBufferIndex], bytesFilled[readyBufferIndex]);
-}
-
-char* MidiEventBuffer::getReadyBuffer()
-{
-	return eventDoubleBuffer[readyBufferIndex];
-}
-
-int MidiEventBuffer::getBytesFilled()
-{
-	return bytesFilled[readyBufferIndex];
-}
-
-MidiFileEventBuffer::MidiFileEventBuffer(const MidiFile& midi)
-	: m_midi(&midi)
-	, m_lastEventTime(0)
-	, m_indicies(midi.tracks.size())
-	, m_absoluteTimes(midi.tracks.size())
-{
+	*out++ = static_cast<char>(val >> 0);
+	*out++ = static_cast<char>(val >> 8);
+	*out++ = static_cast<char>(val >> 16);
+	*out++ = static_cast<char>(val >> 24);
 }
 
 static void writeNoteEndEventToBuffer(const Event::NoteEndEvent& event, char*& out, unsigned int& bytesFilled)
@@ -183,6 +123,70 @@ static void writeMidiEventToBuffer(char*& out, const Event* event, unsigned int 
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+class MidiEventBuffer
+{
+public:
+	MidiEventBuffer(EventProducer& producer);
+	bool fillBuffer();
+	char* getReadyBuffer();
+	int getBytesFilled();
+
+private:	
+	EventProducer* m_producer;
+	char m_eventDoubleBuffer[2][4096];
+	unsigned int m_bytesFilled[2];
+	int m_readyBufferIndex;
+	unsigned int m_lastEventTime;
+};
+
+MidiEventBuffer::MidiEventBuffer(EventProducer& producer)
+	: m_producer(&producer)
+	, m_eventDoubleBuffer()
+	, m_bytesFilled()
+	, m_readyBufferIndex(0)
+	, m_lastEventTime(0)
+{
+}
+
+bool MidiEventBuffer::fillBuffer()
+{
+	m_readyBufferIndex = 1 - m_readyBufferIndex;
+	m_bytesFilled[m_readyBufferIndex] = 0;
+	char* buffer = m_eventDoubleBuffer[m_readyBufferIndex];
+	bool songFinished = true;
+	const Event* event;
+	unsigned int eventAbsoluteTime;
+	while ((m_bytesFilled[m_readyBufferIndex] < 4000) && (event = m_producer->getNextEvent(eventAbsoluteTime)))
+	{
+		songFinished = false;
+		writeMidiEventToBuffer(buffer, event, eventAbsoluteTime - m_lastEventTime, m_bytesFilled[m_readyBufferIndex]);
+		m_lastEventTime = eventAbsoluteTime;
+	}
+	return !songFinished;
+}
+
+char* MidiEventBuffer::getReadyBuffer()
+{
+	return m_eventDoubleBuffer[m_readyBufferIndex];
+}
+
+int MidiEventBuffer::getBytesFilled()
+{
+	return m_bytesFilled[m_readyBufferIndex];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+MidiFileEventProducer::MidiFileEventProducer(MidiFile& midi)
+	: m_midi(&midi)
+	, m_lastEventTime(0)
+	, m_indicies(midi.tracks.size())
+	, m_absoluteTimes(midi.tracks.size())
+{
+}
+
 static const Event* getNextEventInTrack(const Track& track, unsigned int& index, unsigned int& absoluteTime)
 {
 	while (index < track.events.size())
@@ -198,55 +202,48 @@ static const Event* getNextEventInTrack(const Track& track, unsigned int& index,
 	return nullptr;
 }
 
-const Event* getNextEventInMidiFile(const MidiFile* midi, std::vector<unsigned int>& indicies, std::vector<unsigned int>& absoluteTimes, unsigned int& eventAbsoluteTime)
+const Event* MidiFileEventProducer::getNextEvent(unsigned int& absoluteTime)
 {
 	const Event* bestEvent = nullptr;
 	unsigned int bestTime = numeric_limits<unsigned int>::max();
-	for (unsigned int i = 0; i < midi->tracks.size(); i++)
+	for (unsigned int i = 0; i < m_midi->tracks.size(); i++)
 	{
-		const Track& track = midi->tracks[i];
-		const Event* event = getNextEventInTrack(track, indicies[i], absoluteTimes[i]);
-		if (event && absoluteTimes[i] <= bestTime)
+		const Track& track = m_midi->tracks[i];
+		const Event* event = getNextEventInTrack(track, m_indicies[i], m_absoluteTimes[i]);
+		if (event && m_absoluteTimes[i] <= bestTime)
 		{
 			bestEvent = event;
-			bestTime = absoluteTimes[i];
+			bestTime = m_absoluteTimes[i];
 		}
 	}
-	eventAbsoluteTime = bestTime;
+	absoluteTime = bestTime;
 	return bestEvent;
 }
 
-bool MidiFileEventBuffer::fillBufferInternal(char* out, unsigned int& bytesFilled)
+unsigned int MidiFileEventProducer::getInitialTempo()
 {
-	bool songFinished = true;
-	const Event* event;
-	unsigned int eventAbsoluteTime;
-	while ((bytesFilled < 4000) && (event = getNextEventInMidiFile(this->m_midi, this->m_indicies, this->m_absoluteTimes, eventAbsoluteTime)))
-	{
-		songFinished = false;
-		writeMidiEventToBuffer(out, event, eventAbsoluteTime - m_lastEventTime, bytesFilled);
-		m_lastEventTime = eventAbsoluteTime;
-	}
-	return !songFinished;
+	return m_midi->ticks;
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 static void CALLBACK midiStreamEventCallback(HMIDIOUT handle, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
 {
 	MidiStreamImpl* stream = (MidiStreamImpl*)dwInstance;	
 	switch (uMsg)
-    {
-    case MOM_POSITIONCB:
-        break;
+	{
+	case MOM_POSITIONCB:
+		break;
 
-    case MOM_DONE:
-        SetEvent(stream->eventHandle);
-        break;
+	case MOM_DONE:
+		SetEvent(stream->eventHandle);
+		break;
 
 	case MOM_OPEN:
-        break;
-    case MOM_CLOSE:
-        break;
-    }
+		break;
+	case MOM_CLOSE:
+		break;
+	}
 }
 
 static DWORD WINAPI prepareBufferThreadCallback(LPVOID lpParam) 
@@ -273,10 +270,11 @@ static DWORD WINAPI prepareBufferThreadCallback(LPVOID lpParam)
 	return 0;
 }
 
-static MidiStreamImpl* createStreamImpl(MidiFile& midi)
+static MidiStreamImpl* createStreamImpl(EventProducer& producer)
 {
 	MidiStreamImpl* stream = new MidiStreamImpl();
-	stream->midiEventBuffer = new MidiFileEventBuffer(midi);
+	
+	stream->midiEventBuffer = new MidiEventBuffer(producer);
 
 	stream->eventHandle = CreateEvent(0, FALSE, FALSE, 0);
 	
@@ -285,24 +283,27 @@ static MidiStreamImpl* createStreamImpl(MidiFile& midi)
 
 	MIDIPROPTIMEDIV prop;
 	prop.cbStruct = sizeof(MIDIPROPTIMEDIV);
-	prop.dwTimeDiv = midi.ticks;
+	prop.dwTimeDiv = producer.getInitialTempo();
 	midiStreamProperty(stream->midiStreamHandle, (LPBYTE)&prop, MIDIPROP_SET|MIDIPROP_TIMEDIV);
 	
 	return stream;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+//
+// Public API
+//
 
-MidiStream::MidiStream(MidiFile& midi)
-	: impl(createStreamImpl(midi))
+MidiStream::MidiStream(EventProducer& producer)
+	: impl(createStreamImpl(producer))
 {
 }
 
 MidiStream::~MidiStream()
 {
-    midiOutUnprepareHeader((HMIDIOUT)impl->midiStreamHandle, &impl->midiHeader, sizeof(MIDIHDR));
-    midiStreamClose(impl->midiStreamHandle);
-    CloseHandle(impl->eventHandle);
+	midiOutUnprepareHeader((HMIDIOUT)impl->midiStreamHandle, &impl->midiHeader, sizeof(MIDIHDR));
+	midiStreamClose(impl->midiStreamHandle);
+	CloseHandle(impl->eventHandle);
 	delete impl;
 }
 

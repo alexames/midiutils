@@ -366,10 +366,32 @@ struct MidiFile
 
 struct MidiStreamImpl;
 
+class EventProducer
+{
+public:
+	virtual const Event* getNextEvent(unsigned int& absoluteTime) = 0;
+	virtual unsigned int getInitialTempo() = 0;
+};
+
+class MidiFileEventProducer : public EventProducer
+{
+public:
+	MidiFileEventProducer(MidiFile& midi);
+
+	virtual const Event* getNextEvent(unsigned int& absoluteTime);
+	virtual unsigned int getInitialTempo();
+
+private:
+	MidiFile* m_midi;
+	unsigned int m_lastEventTime;
+	std::vector<unsigned int> m_indicies;
+	std::vector<unsigned int> m_absoluteTimes;
+};
+
 class MidiStream
 {
 public:
-	MidiStream(MidiFile& midi);
+	MidiStream(EventProducer& producer);
 	~MidiStream();
 	
 	void play();
