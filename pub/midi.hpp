@@ -373,6 +373,7 @@ public:
 	~MidiStream();
 	
 	void play();
+	unsigned int getPosition() const;
 
 private: 
 	MidiStreamImpl* impl;

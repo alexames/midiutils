@@ -3,6 +3,7 @@
 
 #define NOMINMAX // Who's idea was it to define a 'max' macro all lowercase?
 #include "windows.h"
+#include "mmsyscom.h"
 
 #include <vector>
 #include <limits>
@@ -310,6 +311,20 @@ void MidiStream::play()
 	DWORD dwThreadId;
 	HANDLE thread = CreateThread(NULL, 0, prepareBufferThreadCallback, impl, 0, &dwThreadId);
 	midiStreamRestart(impl->midiStreamHandle);
+}
+
+unsigned int MidiStream::getPosition() const
+{
+	MMTIME time;
+	time.wType = TIME_MIDI; 
+	if (midiStreamPosition(impl->midiStreamHandle, &time, sizeof(MMTIME)) || time.wType != TIME_MIDI)
+	{
+		throw exception("An error requesting the time!\n");
+	}
+	else
+	{
+		return time.u.midi.songptrpos;
+	}
 }
 
 } // namespace midi
