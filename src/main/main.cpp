@@ -17,7 +17,8 @@ int main(int argc, char* argv[])
 	//ofstream output("..\\output.mid", ios::binary);
 	//midi::writeFile(midi, output);
 
-	midi::MidiStream stream(midi);
+	midi::MidiFileEventProducer producer(midi);
+	midi::MidiStream stream(producer);
 	stream.play();
 	
 	while (true) ;
