@@ -319,7 +319,7 @@ unsigned int MidiStream::getPosition() const
 	time.wType = TIME_MIDI; 
 	if (midiStreamPosition(impl->midiStreamHandle, &time, sizeof(MMTIME)) || time.wType != TIME_MIDI)
 	{
-		throw exception("An error requesting the time!\n");
+		throw exception("error requesting stream position");
 	}
 	else
 	{
