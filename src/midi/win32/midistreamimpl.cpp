@@ -1,121 +1,223 @@
+#include "midi.hpp"
 #include "midistreamimpl.hpp"
 
-#include <windows.h>
+#define NOMINMAX // Who's idea was it to define a 'max' macro all lowercase?
+#include "windows.h"
+
+#include <vector>
+#include <limits>
+
+using namespace std;
 
 namespace midi
 {
 
+static void writeUInt32le(char*& out, unsigned int val)
+{
+	*out++ = static_cast<char>(val >> 0);
+	*out++ = static_cast<char>(val >> 8);
+	*out++ = static_cast<char>(val >> 16);
+	*out++ = static_cast<char>(val >> 24);
+}
+
 struct MidiEventBuffer
 {
-	char eventDoubleBuffer[2][4096];
-	int bytesFilled[2];
-
-	int bufferIndex;
-
+public:
+	MidiEventBuffer();
 	bool fillBuffer();
-	char* getBuffer();
+	char* getReadyBuffer();
 	int getBytesFilled();
+
+private:
+	virtual bool fillBufferInternal(char* buffer, unsigned int& bytesFilled) = 0;
+
+	char eventDoubleBuffer[2][4096];
+	unsigned int bytesFilled[2];
+	int readyBufferIndex;
+	
 };
 
-static unsigned char testNotes0[] = 
-{ 
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x3C, 0x7F, 0x00,
-
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x40, 0x7F, 0x00,
-
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x43, 0x7F, 0x00,
-
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x40, 0x7F, 0x00
-};
-
-static unsigned char testNotes1[] = 
-{ 
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x48, 0x7F, 0x00,
-
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x4C, 0x7F, 0x00,
-
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x4F, 0x7F, 0x00,
-
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x4C, 0x7F, 0x00,
-
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x48, 0x7F, 0x00,
-
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x4C, 0x7F, 0x00,
-
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x4F, 0x7F, 0x00,
-
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x4C, 0x7F, 0x00
-};
-
-static unsigned char testNotes2[] = 
-{ 
-	0x60, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x3C, 0x4F, 0x00,
-
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x3E, 0x4F, 0x00,
-
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x40, 0x4F, 0x00,
-
-	0xC0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00,
-	0x90, 0x42, 0x4F, 0x00
-};
-
+MidiEventBuffer::MidiEventBuffer()
+	: eventDoubleBuffer()
+	, bytesFilled()
+	, readyBufferIndex(0)
+{
+}
 
 bool MidiEventBuffer::fillBuffer()
 {
-	static int sourceIndex = 0;
-	static unsigned char* testNotes[] = { testNotes0, testNotes1, testNotes2 };
-	static int sizes[] = { 48, 96, 48 };
-
-	for (int i = 0; i < sizes[sourceIndex]; i++)
-	{
-		eventDoubleBuffer[bufferIndex][i] = testNotes[sourceIndex][i];
-	}
-	bytesFilled[bufferIndex] = sizes[sourceIndex];
-	sourceIndex = (sourceIndex+1) % 3;
-
-	bufferIndex = 1 - bufferIndex;
-	return true;
+	readyBufferIndex = 1 - readyBufferIndex;
+	return fillBufferInternal(eventDoubleBuffer[readyBufferIndex], bytesFilled[readyBufferIndex]);
 }
 
-char* MidiEventBuffer::getBuffer()
+char* MidiEventBuffer::getReadyBuffer()
 {
-	return eventDoubleBuffer[1 - bufferIndex];
+	return eventDoubleBuffer[readyBufferIndex];
 }
 
 int MidiEventBuffer::getBytesFilled()
 {
-	return bytesFilled[1 - bufferIndex];
+	return bytesFilled[readyBufferIndex];
+}
+
+struct MidiFileEventBuffer : public MidiEventBuffer
+{
+public:
+	MidiFileEventBuffer(const MidiFile& midi);
+
+private:
+
+	virtual bool fillBufferInternal(char* buffer, unsigned int& bytesFilled);
+
+	const MidiFile* m_midi;
+	unsigned int m_lastEventTime;
+	std::vector<unsigned int> m_indicies;
+	std::vector<unsigned int> m_absoluteTimes;
+};
+
+MidiFileEventBuffer::MidiFileEventBuffer(const MidiFile& midi)
+	: m_midi(&midi)
+	, m_lastEventTime(0)
+	, m_indicies(midi.tracks.size())
+	, m_absoluteTimes(midi.tracks.size())
+{
+}
+
+static void writeNoteEndEventToBuffer(const Event::NoteEndEvent& event, char*& out, unsigned int& bytesFilled)
+{
+	*out++ = event.noteNumber;
+	*out++ = event.velocity;
+	*out++ = 0;
+	bytesFilled+=3;
+}
+
+static void writeNoteBeginEventToBuffer(const Event::NoteBeginEvent& event, char*& out, unsigned int& bytesFilled)
+{
+	*out++ = event.noteNumber;
+	*out++ = event.velocity;
+	*out++ = 0;
+	bytesFilled+=3;
+}
+
+static void writeVelocityChangeEventToBuffer(const Event::VelocityChangeEvent& event, char*& out, unsigned int& bytesFilled)
+{
+	*out++ = 0;
+	*out++ = 0;
+	*out++ = 0;
+	bytesFilled+=3;
+}
+
+static void writeControllerChangeEventToBuffer(const Event::ControllerChangeEvent& event, char*& out, unsigned int& bytesFilled)
+{
+	*out++ = 0;
+	*out++ = 0;
+	*out++ = 0;
+	bytesFilled+=3;
+}
+
+static void writeProgramChangeEventToBuffer(const Event::ProgramChangeEvent& event, char*& out, unsigned int& bytesFilled)
+{
+	*out++ = 0;
+	*out++ = 0;
+	*out++ = 0;
+	bytesFilled+=3;
+}
+
+static void writeChannelPressureChangeEventToBuffer(const Event::ChannelPressureChangeEvent& event, char*& out, unsigned int& bytesFilled)
+{
+	*out++ = 0;
+	*out++ = 0;
+	*out++ = 0;
+	bytesFilled+=3;
+}
+
+static void writePitchWheelChangeEventToBuffer(const Event::PitchWheelChangeEvent& event, char*& out, unsigned int& bytesFilled)
+{
+	*out++ = 0;
+	*out++ = 0;
+	*out++ = 0;
+	bytesFilled+=3;
+}
+
+static void writeMidiEventToBuffer(char*& out, const Event* event, unsigned int timeDelta, unsigned int& bytesFilled)
+{
+	writeUInt32le(out, timeDelta);
+	writeUInt32le(out, 0x00000000);
+	*out++ = event->command | event->channel;
+	bytesFilled+=9;
+	switch (event->command)
+	{
+	case Event::NoteEnd:
+		writeNoteEndEventToBuffer(event->noteEnd, out, bytesFilled);
+		break;
+	case Event::NoteBegin:
+		writeNoteBeginEventToBuffer(event->noteBegin, out, bytesFilled);
+		break;
+	case Event::VelocityChange:
+		writeVelocityChangeEventToBuffer(event->velocityChange, out, bytesFilled);
+		break;
+	case Event::ControllerChange:
+		writeControllerChangeEventToBuffer(event->controllerChange, out, bytesFilled);
+		break;
+	case Event::ProgramChange:
+		writeProgramChangeEventToBuffer(event->programChange, out, bytesFilled);
+		break;
+	case Event::ChannelPressureChange:
+		writeChannelPressureChangeEventToBuffer(event->channelPressureChange, out, bytesFilled);
+		break;
+	case Event::PitchWheelChange:
+		writePitchWheelChangeEventToBuffer(event->pitchWheelChange, out, bytesFilled);
+		break;
+	default:
+		throw exception();
+	}
+}
+
+static const Event* getNextEventInTrack(const Track& track, unsigned int& index, unsigned int& absoluteTime)
+{
+	while (index < track.events.size())
+	{
+		const Event* event = &track.events[index++];
+		absoluteTime += event->timeDelta;
+			
+		if (event->command != Event::Meta)
+		{
+			return event;
+		}
+	}
+	return nullptr;
+}
+
+const Event* getNextEventInMidiFile(const MidiFile* midi, std::vector<unsigned int>& indicies, std::vector<unsigned int>& absoluteTimes, unsigned int& eventAbsoluteTime)
+{
+	const Event* bestEvent = nullptr;
+	unsigned int bestTime = numeric_limits<unsigned int>::max();
+	for (unsigned int i = 0; i < midi->tracks.size(); i++)
+	{
+		const Track& track = midi->tracks[i];
+		const Event* event = getNextEventInTrack(track, indicies[i], absoluteTimes[i]);
+		if (event && absoluteTimes[i] <= bestTime)
+		{
+			bestEvent = event;
+			bestTime = absoluteTimes[i];
+		}
+	}
+	eventAbsoluteTime = bestTime;
+	return bestEvent;
+}
+
+bool MidiFileEventBuffer::fillBufferInternal(char* out, unsigned int& bytesFilled)
+{
+	bool songFinished = true;
+	const Event* event;
+	unsigned int eventAbsoluteTime;
+	while ((bytesFilled < 4000) && (event = getNextEventInMidiFile(this->m_midi, this->m_indicies, this->m_absoluteTimes, eventAbsoluteTime)))
+	{
+		songFinished = false;
+		writeMidiEventToBuffer(out, event, eventAbsoluteTime - m_lastEventTime, bytesFilled);
+		m_lastEventTime = eventAbsoluteTime;
+	}
+	return !songFinished;
 }
 
 struct MidiStreamImpl
@@ -123,7 +225,7 @@ struct MidiStreamImpl
 	HMIDISTRM midiStreamHandle;
 	HANDLE eventHandle;
 	MIDIHDR midiHeader;
-	MidiEventBuffer midiEventBuffer;
+	MidiEventBuffer* midiEventBuffer;
 };
 
 void CALLBACK midiStreamEventCallback(HMIDIOUT handle, UINT uMsg, DWORD dwInstance, DWORD dwParam1, DWORD dwParam2)
@@ -148,6 +250,7 @@ void CALLBACK midiStreamEventCallback(HMIDIOUT handle, UINT uMsg, DWORD dwInstan
 MidiStreamImpl* createStreamImpl(MidiFile& midi)
 {
 	MidiStreamImpl* stream = new MidiStreamImpl();
+	stream->midiEventBuffer = new MidiFileEventBuffer(midi);
 
 	stream->eventHandle = CreateEvent(0, FALSE, FALSE, 0);
 	
@@ -174,18 +277,18 @@ DWORD WINAPI prepareBufferThreadCallback(LPVOID lpParam)
 {
 	MidiStreamImpl* stream = (MidiStreamImpl*)lpParam;
 
-	if (!stream->midiEventBuffer.fillBuffer())
+	if (!stream->midiEventBuffer->fillBuffer())
 		return 0;
 
 	while (true)
 	{
-		stream->midiHeader.lpData = (LPSTR)stream->midiEventBuffer.getBuffer();
-		stream->midiHeader.dwBufferLength = stream->midiHeader.dwBytesRecorded = stream->midiEventBuffer.getBytesFilled();
+		stream->midiHeader.lpData = (LPSTR)stream->midiEventBuffer->getReadyBuffer();
+		stream->midiHeader.dwBufferLength = stream->midiHeader.dwBytesRecorded = stream->midiEventBuffer->getBytesFilled();
 		stream->midiHeader.dwFlags = 0;
 		midiOutPrepareHeader((HMIDIOUT)stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
 		midiStreamOut(stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
 		
-		if (!stream->midiEventBuffer.fillBuffer())
+		if (!stream->midiEventBuffer->fillBuffer())
 			break;
 
 		WaitForSingleObject(stream->eventHandle, INFINITE);
