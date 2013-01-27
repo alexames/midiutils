@@ -28,8 +28,5 @@
     <ClInclude Include="..\..\..\pub\midi.hpp">
       <Filter>pub</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\midi\midistreamimpl.hpp">
-      <Filter>src</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

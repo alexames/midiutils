@@ -72,7 +72,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\pub\midi.hpp" />
-    <ClInclude Include="..\..\..\src\midi\midistreamimpl.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
