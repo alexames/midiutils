@@ -378,7 +378,7 @@ private:
 	MidiStreamImpl* impl;
 };
 
-void readFile(MidiFile& midi, std::istream& in);
+void readFile(MidiFile& midi, std::istream& in, bool strict = false);
 
 void writeFile(const MidiFile& midi, std::ostream& out);
 

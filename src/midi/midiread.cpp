@@ -124,7 +124,7 @@ unsigned char readEventCommand(istream& in, unsigned char& previousCommandByte, 
 	}
 }
 
-static void readEvent(Event& event, istream& in, unsigned int& byteCount, unsigned char& previousCommandByte)
+static bool readEvent(Event& event, istream& in, unsigned int& byteCount, unsigned char& previousCommandByte, bool strict)
 {
 	readEventTime(event.timeDelta, in, byteCount);
 
@@ -157,43 +157,53 @@ static void readEvent(Event& event, istream& in, unsigned int& byteCount, unsign
 		break;
 	case Event::Meta:
 		readMetaEvent(event.meta, in, byteCount);
-		if (isTrackEnd(event) != (byteCount == 0))
+		if (isTrackEnd(event))
 		{
-			throw exception();
+			if (strict && (byteCount != 0))
+			{
+				throw exception("Invalid track length");
+			}
+			else
+			{
+				return false;
+			}
 		}
 		break;
 	default:
-		throw exception();
+		throw exception("Invalid midi event");
 	}
+	return true;
 }
 
-static void readTrack(Track& track, istream& in)
+static void readTrack(Track& track, istream& in, bool strict)
 {
 	if (readUInt32be(in) != 'MTrk')
 	{
-		throw exception();
+		throw exception("Invalid midi track header");
 	}
 	unsigned int byteCount = readUInt32be(in);
 	unsigned char previousCommand = 0;
-	while (byteCount)
+	if (byteCount || !strict)
 	{
-		track.events.push_back(Event());
-		readEvent(track.events.back(), in, byteCount, previousCommand);
+		do 
+		{
+			track.events.push_back(Event());
+		} while (readEvent(track.events.back(), in, byteCount, previousCommand, strict));
 	}
 }
 
-void readFile(MidiFile& midi, istream& in)
+void readFile(MidiFile& midi, istream& in, bool strict)
 {
 	if (readUInt32be(in) != 'MThd' || readUInt32be(in) != 0x0006)
 	{
-		throw exception();
+		throw exception("Invalid midi header");
 	}
 	midi.format = static_cast<Format>(readUInt16be(in));
 	midi.tracks.resize(readUInt16be(in));
 	midi.ticks = readUInt16be(in);
 	for (Track& track : midi.tracks)
 	{
-		readTrack(track, in);
+		readTrack(track, in, strict);
 	}
 }
 
