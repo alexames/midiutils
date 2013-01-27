@@ -272,9 +272,7 @@ static DWORD WINAPI prepareBufferThreadCallback(LPVOID lpParam)
 	return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-MidiStreamImpl* createStreamImpl(MidiFile& midi)
+static MidiStreamImpl* createStreamImpl(MidiFile& midi)
 {
 	MidiStreamImpl* stream = new MidiStreamImpl();
 	stream->midiEventBuffer = new MidiFileEventBuffer(midi);
@@ -292,19 +290,26 @@ MidiStreamImpl* createStreamImpl(MidiFile& midi)
 	return stream;
 }
 
-void destroyStreamImpl(MidiStreamImpl* stream)
+////////////////////////////////////////////////////////////////////////////////
+
+MidiStream::MidiStream(MidiFile& midi)
+	: impl(createStreamImpl(midi))
 {
-    midiOutUnprepareHeader((HMIDIOUT)stream->midiStreamHandle, &stream->midiHeader, sizeof(MIDIHDR));
-    midiStreamClose(stream->midiStreamHandle);
-    CloseHandle(stream->eventHandle);
-	delete stream;
 }
 
-void playStreamImpl(MidiStreamImpl* stream)
+MidiStream::~MidiStream()
+{
+    midiOutUnprepareHeader((HMIDIOUT)impl->midiStreamHandle, &impl->midiHeader, sizeof(MIDIHDR));
+    midiStreamClose(impl->midiStreamHandle);
+    CloseHandle(impl->eventHandle);
+	delete impl;
+}
+
+void MidiStream::play()
 {
 	DWORD dwThreadId;
-	HANDLE thread = CreateThread(NULL, 0, prepareBufferThreadCallback, stream, 0, &dwThreadId);
-	midiStreamRestart(stream->midiStreamHandle);
+	HANDLE thread = CreateThread(NULL, 0, prepareBufferThreadCallback, impl, 0, &dwThreadId);
+	midiStreamRestart(impl->midiStreamHandle);
 }
 
 } // namespace midi
