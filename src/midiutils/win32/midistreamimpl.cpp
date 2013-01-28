@@ -1,4 +1,4 @@
-#include "midi.hpp"
+#include "midiutils.hpp"
 
 #define NOMINMAX // Who's idea was it to define a 'max' macro all lowercase?
 #include "windows.h"

@@ -25,7 +25,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\pub\midi.hpp">
+    <ClInclude Include="..\..\..\pub\midiutils.hpp">
       <Filter>pub</Filter>
     </ClInclude>
   </ItemGroup>
