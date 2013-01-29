@@ -58,6 +58,48 @@ static luaL_Reg luamidiutils_table[] =
 	{ NULL, NULL }
 };
 
+MidiFileEventProducer* MidiFileEventProducer_ctor(lua_State* L)
+{
+	MidiFile* midi = luaW_check<MidiFile>(L, 1);
+	if (midi)
+	{
+		return new MidiFileEventProducer(*midi);
+	}
+	else 
+	{
+		return nullptr;
+	}
+}
+
+MidiStream* MidiStream_ctor(lua_State* L)
+{
+	EventProducer* producer = luaW_check<EventProducer>(L, 1);
+	if (producer)
+	{
+		return new MidiStream(*producer);
+	}
+	else 
+	{
+		return nullptr;
+	}
+}
+
+int MidiStream_play(lua_State* L)
+{
+	MidiStream* stream = luaW_check<MidiStream>(L, 1);
+	if (stream)
+	{
+		stream->play();
+	}
+	return 0;
+}
+
+static luaL_Reg MidiStream_metatable[] =
+{
+	{ "play", MidiStream_play },
+	{ NULL, NULL }
+};
+
 } // namespace midi
 
 extern "C"
@@ -65,9 +107,23 @@ extern "C"
 
 MIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
 {
-	luaL_register(L, "luamidiutils", midi::luamidiutils_table);
+	luaL_register(L, "lmu", midi::luamidiutils_table);
+	
 	luaW_register<midi::MidiFile>(L, "MidiFile", NULL, NULL);
 	lua_setfield(L, -2, "MidiFile");
+
+	luaW_register<midi::EventProducer>(L, "EventProducer", NULL, NULL, NULL, NULL);
+	lua_setfield(L, -2, "EventProducer");
+
+	luaW_register<midi::MidiFileEventProducer>(L, "MidiFileEventProducer", NULL, NULL, midi::MidiFileEventProducer_ctor);
+	luaW_extend<midi::MidiFileEventProducer, midi::EventProducer>(L);
+	lua_setfield(L, -2, "MidiFileEventProducer");
+
+	luaW_register<midi::MidiStream>(L, "MidiStream", NULL, midi::MidiStream_metatable, midi::MidiStream_ctor);
+	lua_setfield(L, -2, "MidiStream");
+
+	//luaW_register<midi::LuaEventProducer>(L, "LuaEventProducer", NULL, NULL);
+	//lua_setfield(L, -2, "LuaEventProducer");
 
 	lua_newtable(L);
 	luaU_setenum(L, -1, "acousticgrand", midi::Acoustic_Grand);
