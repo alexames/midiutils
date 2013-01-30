@@ -8,20 +8,20 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-	const string filename = "..\\..\\..\\data\\example.mid";
-	midi::MidiFile midi;
-	
-	ifstream file(filename, ios::binary);
-	midi::readFile(midi, file);
-	
-	//ofstream output("..\\output.mid", ios::binary);
-	//midi::writeFile(midi, output);
+    const string filename = "..\\..\\..\\data\\example.mid";
+    midi::MidiFile midi;
+    
+    ifstream file(filename, ios::binary);
+    midi::readFile(midi, file);
+    
+    //ofstream output("..\\output.mid", ios::binary);
+    //midi::writeFile(midi, output);
 
-	midi::MidiFileEventProducer producer(midi);
-	midi::MidiStream stream(producer);
-	stream.play();
-	
-	while (true) ;
+    midi::MidiFileEventProducer producer(midi);
+    midi::MidiStream stream(producer);
+    stream.play();
+    
+    while (true) ;
 
-	return 0;
+    return 0;
 }

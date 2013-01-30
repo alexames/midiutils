@@ -3,8 +3,12 @@
 #include "LuaWrapper.hpp"
 #include "LuaWrapperUtil.hpp"
 
+extern "C"
+{
 #include "lauxlib.h"
+#include "lualib.h"
 #include "lua.h"
+}
 
 #include <fstream>
 #include <exception>
@@ -13,118 +17,63 @@
 
 using namespace std;
 
+template <>
+inline midi::Event luaU_check<>(lua_State* L, int index)
+{
+    midi::Event event;
+    event.timeDelta = luaU_getfield<unsigned int>(L, index, "timedelta");
+    event.command = static_cast<midi::Event::Command>(luaU_getfield<int>(L, index, "command"));
+    event.channel = luaU_getfield<unsigned int>(L, index, "channel");
+    switch (event.command)
+    {
+    case midi::Event::NoteEnd:
+        event.noteEnd.noteNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
+        event.noteEnd.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+        break;
+    case midi::Event::NoteBegin:
+        event.noteBegin.noteNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
+        event.noteBegin.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+        break;
+    case midi::Event::VelocityChange:
+        event.velocityChange.noteNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
+        event.velocityChange.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+        break;
+    case midi::Event::ControllerChange:
+        event.controllerChange.controllerNumber = luaU_getfield<unsigned int>(L, index, "controllernumber");
+        event.controllerChange.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+        break;
+    case midi::Event::ProgramChange:
+        event.programChange.newProgramNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
+        break;
+    case midi::Event::ChannelPressureChange:
+        event.channelPressureChange.channelNumber= luaU_getfield<unsigned int>(L, index, "channelnumber");
+        break;
+    case midi::Event::PitchWheelChange:
+        break;
+    case midi::Event::Meta:
+        break;
+    }
+    return event;
+}
+
 namespace midi
 {
 
-static int midifileutils_readFile(lua_State* L)
+void pushcommandenums(lua_State* L)
 {
-	MidiFile* midi = luaW_check<MidiFile>(L, 1);
-	const char* filename = luaL_checkstring(L, 2);
-	bool strict = lua_toboolean(L, 3);
-	ifstream file(filename, ios::binary);
-	try
-	{
-		readFile(*midi, file, strict);
-	}
-	catch (exception& ex)
-	{
-		lua_pushstring(L, ex.what());
-		return 1;
-	}
-	return 0;
+	lua_newtable(L);
+	luaU_setenum(L, -1, "noteend", midi::Event::NoteEnd);
+	luaU_setenum(L, -1, "notebegin", midi::Event::NoteBegin);
+	luaU_setenum(L, -1, "velocitychange", midi::Event::VelocityChange);
+	luaU_setenum(L, -1, "controllerchange", midi::Event::ControllerChange);
+	luaU_setenum(L, -1, "programchange", midi::Event::ProgramChange);
+	luaU_setenum(L, -1, "channelpressurechange", midi::Event::ChannelPressureChange);
+	luaU_setenum(L, -1, "pitchwheelchange", midi::Event::PitchWheelChange);
+	luaU_setenum(L, -1, "meta", midi::Event::Meta);
 }
 
-static int midifileutils_writeFile(lua_State* L)
+void pushinstrumentenums(lua_State* L)
 {
-	MidiFile* midi = luaW_check<MidiFile>(L, 1);
-	const char* filename = luaL_checkstring(L, 2);
-	ofstream file(filename, ios::binary);
-	try
-	{
-		writeFile(*midi, file);
-	}
-	catch (exception& ex)
-	{
-		lua_pushstring(L, ex.what());
-		return 1;
-	}
-	return 0;
-}
-
-static luaL_Reg luamidiutils_table[] =
-{
-	{ "readfile", midifileutils_readFile },
-	{ "writefile", midifileutils_writeFile },
-	{ NULL, NULL }
-};
-
-MidiFileEventProducer* MidiFileEventProducer_ctor(lua_State* L)
-{
-	MidiFile* midi = luaW_check<MidiFile>(L, 1);
-	if (midi)
-	{
-		return new MidiFileEventProducer(*midi);
-	}
-	else 
-	{
-		return nullptr;
-	}
-}
-
-MidiStream* MidiStream_ctor(lua_State* L)
-{
-	EventProducer* producer = luaW_check<EventProducer>(L, 1);
-	if (producer)
-	{
-		return new MidiStream(*producer);
-	}
-	else 
-	{
-		return nullptr;
-	}
-}
-
-int MidiStream_play(lua_State* L)
-{
-	MidiStream* stream = luaW_check<MidiStream>(L, 1);
-	if (stream)
-	{
-		stream->play();
-	}
-	return 0;
-}
-
-static luaL_Reg MidiStream_metatable[] =
-{
-	{ "play", MidiStream_play },
-	{ NULL, NULL }
-};
-
-} // namespace midi
-
-extern "C"
-{
-
-MIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
-{
-	luaL_register(L, "lmu", midi::luamidiutils_table);
-	
-	luaW_register<midi::MidiFile>(L, "MidiFile", NULL, NULL);
-	lua_setfield(L, -2, "MidiFile");
-
-	luaW_register<midi::EventProducer>(L, "EventProducer", NULL, NULL, NULL, NULL);
-	lua_setfield(L, -2, "EventProducer");
-
-	luaW_register<midi::MidiFileEventProducer>(L, "MidiFileEventProducer", NULL, NULL, midi::MidiFileEventProducer_ctor);
-	luaW_extend<midi::MidiFileEventProducer, midi::EventProducer>(L);
-	lua_setfield(L, -2, "MidiFileEventProducer");
-
-	luaW_register<midi::MidiStream>(L, "MidiStream", NULL, midi::MidiStream_metatable, midi::MidiStream_ctor);
-	lua_setfield(L, -2, "MidiStream");
-
-	//luaW_register<midi::LuaEventProducer>(L, "LuaEventProducer", NULL, NULL);
-	//lua_setfield(L, -2, "LuaEventProducer");
-
 	lua_newtable(L);
 	luaU_setenum(L, -1, "acousticgrand", midi::Acoustic_Grand);
 	luaU_setenum(L, -1, "brightacoustic", midi::Bright_Acoustic);
@@ -254,7 +203,186 @@ MIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
 	luaU_setenum(L, -1, "helicopter", midi::Helicopter);
 	luaU_setenum(L, -1, "applause", midi::Applause);
 	luaU_setenum(L, -1, "gunshot", midi::Gunshot);
-	lua_setfield(L, -2, "instruments");
+}
+
+static int midifileutils_readFile(lua_State* L)
+{
+	MidiFile* midi = luaW_check<MidiFile>(L, 1);
+	const char* filename = luaL_checkstring(L, 2);
+	bool strict = lua_toboolean(L, 3);
+	ifstream file(filename, ios::binary);
+	try
+	{
+		readFile(*midi, file, strict);
+	}
+	catch (exception& ex)
+	{
+		lua_pushstring(L, ex.what());
+		return 1;
+	}
+	return 0;
+}
+
+static int midifileutils_writeFile(lua_State* L)
+{
+	MidiFile* midi = luaW_check<MidiFile>(L, 1);
+	const char* filename = luaL_checkstring(L, 2);
+	ofstream file(filename, ios::binary);
+	try
+	{
+		writeFile(*midi, file);
+	}
+	catch (exception& ex)
+	{
+		lua_pushstring(L, ex.what());
+		return 1;
+	}
+	return 0;
+}
+
+static luaL_Reg luamidiutils_table[] =
+{
+	{ "readfile", midifileutils_readFile },
+	{ "writefile", midifileutils_writeFile },
+	{ NULL, NULL }
+};
+
+MidiFileEventProducer* MidiFileEventProducer_ctor(lua_State* L)
+{
+	MidiFile* midi = luaW_check<MidiFile>(L, 1);
+	if (midi)
+	{
+		return new MidiFileEventProducer(*midi);
+	}
+	else 
+	{
+		return nullptr;
+	}
+}
+
+MidiStream* MidiStream_ctor(lua_State* L)
+{
+	EventProducer* producer = luaW_check<EventProducer>(L, 1);
+	if (producer)
+	{
+		return new MidiStream(*producer);
+	}
+	else 
+	{
+		return nullptr;
+	}
+}
+
+int MidiStream_play(lua_State* L)
+{
+	MidiStream* stream = luaW_check<MidiStream>(L, 1);
+	if (stream)
+	{
+		stream->play();
+	}
+	return 0;
+}
+
+static luaL_Reg MidiStream_metatable[] =
+{
+	{ "play", MidiStream_play },
+	{ NULL, NULL }
+};
+
+class LuaEventProducer : public EventProducer
+{
+public:
+    LuaEventProducer(const char* filename);
+    ~LuaEventProducer();
+
+    virtual const Event* getNextEvent(unsigned int& absoluteTime);
+    virtual unsigned int getInitialTempo();
+
+private:
+    lua_State* m_L;
+    Event m_event;
+    unsigned int m_tempo;
+    unsigned int m_absoluteTime;
+};
+
+LuaEventProducer* LuaEventProducer_ctor(lua_State* L)
+{
+    return new LuaEventProducer(luaL_checkstring(L, 1));
+}
+
+LuaEventProducer::LuaEventProducer(const char* filename)
+    : m_L(luaL_newstate())
+    , m_tempo(120)
+    , m_absoluteTime(0)
+{
+    luaL_openlibs(m_L);
+    pushcommandenums(m_L);
+    lua_setglobal(m_L, "command");
+    pushinstrumentenums(m_L);
+    lua_setglobal(m_L, "instrument");
+    luaL_dofile(m_L, filename);
+}
+
+LuaEventProducer::~LuaEventProducer()
+{
+    lua_close(m_L);
+}
+
+const Event* LuaEventProducer::getNextEvent(unsigned int& absoluteTime)
+{
+    lua_getglobal(m_L, "getnextevent");
+    //luaW_push(m_L, this);
+    lua_call(m_L, 0, 1);
+    if (lua_istable(m_L, -1))
+    {
+        m_event = luaU_check<Event>(m_L, -1);
+        m_absoluteTime += m_event.timeDelta;
+        absoluteTime = m_absoluteTime;
+        lua_pop(m_L, 1);
+        return &m_event;
+    }
+    else
+    {
+        lua_pop(m_L, 1);
+        return nullptr;
+    }
+}
+
+unsigned int LuaEventProducer::getInitialTempo()
+{
+    return m_tempo;
+}
+
+} // namespace midi
+
+extern "C"
+{
+
+MIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
+{
+	luaL_register(L, "lmu", midi::luamidiutils_table);
+	
+	luaW_register<midi::MidiFile>(L, "MidiFile", NULL, NULL);
+	lua_setfield(L, -2, "MidiFile");
+
+	luaW_register<midi::EventProducer>(L, "EventProducer", NULL, NULL, NULL, NULL);
+	lua_setfield(L, -2, "EventProducer");
+
+	luaW_register<midi::MidiFileEventProducer>(L, "MidiFileEventProducer", NULL, NULL, midi::MidiFileEventProducer_ctor);
+	luaW_extend<midi::MidiFileEventProducer, midi::EventProducer>(L);
+	lua_setfield(L, -2, "MidiFileEventProducer");
+
+	luaW_register<midi::MidiStream>(L, "MidiStream", NULL, midi::MidiStream_metatable, midi::MidiStream_ctor);
+	lua_setfield(L, -2, "MidiStream");
+
+    luaW_register<midi::LuaEventProducer>(L, "LuaEventProducer", NULL, NULL, midi::LuaEventProducer_ctor);
+	luaW_extend<midi::LuaEventProducer, midi::EventProducer>(L);
+	lua_setfield(L, -2, "LuaEventProducer");
+
+    midi::pushinstrumentenums(L);
+	lua_setfield(L, -2, "instrument");
+    midi::pushcommandenums(L);
+	lua_setfield(L, -2, "command");
 
 	return 1;
 }
