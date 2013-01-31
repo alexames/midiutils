@@ -68,7 +68,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\src\luamidiutils\luaeventproducer.cpp" />
+    <ClCompile Include="..\..\..\src\luamidiutils\luamidienums.cpp" />
     <ClCompile Include="..\..\..\src\luamidiutils\luamidiutils.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\luamidiutils\luamidiutils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
