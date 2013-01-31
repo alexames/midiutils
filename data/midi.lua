@@ -1,24 +1,21 @@
 
-note = 80
+Midi = {}
+Midi.metatable = {}
+Midi.metatable.__index = Midi.metatable
 
-gnote = {
-        timedelta = 1000;
-        command = command.notebegin;
-        channel = 0;
-        notenumber = note;
-        velocity = 100;
-    };
+function Midi.new()
+    local obj = {}
+    setmetatable(obj, Midi.metatable)
+    obj.tracks = {}
+    return obj
+end
 
-i = 5
+Track = {}
+Track.metatable = {}
+Track.metatable.__index = Track.metatable
 
-function getnextevent(producer)
-    note = note + 1
-    if note > 110 then note = 80 end
-    return {
-        timedelta = 100;
-        command = command.notebegin;
-        channel = 0;
-        notenumber = note;
-        velocity = 100;
-    }
+function Track.new()
+    local obj = {}
+    setmetatable(obj, Midi.metatable)
+    return obj
 end

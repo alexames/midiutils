@@ -7,31 +7,42 @@
 
 using namespace midi;
 
+unsigned int luamidievent_getvelocity(lua_State* L, int index, const char* field)
+{
+    double value = luaU_getfield<unsigned int>(L, index, field);
+    if (value < 0) 
+        return 0;
+    else if (value <= 1)
+        return static_cast<unsigned int>(0x7F * value);
+    else
+        return 0x7F;
+}
+
 template <>
 inline LuaMidiEvent luaU_check<>(lua_State* L, int index)
 {
     LuaMidiEvent luaEvent;
     luaEvent.event.timeDelta = luaU_getfield<unsigned int>(L, index, "timedelta");
-    luaEvent.event.absoluteTime = luaU_getfield<unsigned int>(L, index, "time");
+    luaEvent.absoluteTime = luaU_getfield<unsigned int>(L, index, "time");
     luaEvent.event.command = static_cast<Event::Command>(luaU_getfield<int>(L, index, "command"));
     luaEvent.event.channel = luaU_getfield<unsigned int>(L, index, "channel");
-    switch (event.command)
+    switch (luaEvent.event.command)
     {
     case Event::NoteEnd:
         luaEvent.event.noteEnd.noteNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
-        luaEvent.event.noteEnd.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+        luaEvent.event.noteEnd.velocity = luamidievent_getvelocity(L, index, "velocity");
         break;
     case Event::NoteBegin:
         luaEvent.event.noteBegin.noteNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
-        luaEvent.event.noteBegin.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+        luaEvent.event.noteBegin.velocity = luamidievent_getvelocity(L, index, "velocity");
         break;
     case Event::VelocityChange:
         luaEvent.event.velocityChange.noteNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
-       luaEvent. event.velocityChange.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+       luaEvent. event.velocityChange.velocity = luamidievent_getvelocity(L, index, "velocity");
         break;
     case Event::ControllerChange:
         luaEvent.event.controllerChange.controllerNumber = luaU_getfield<unsigned int>(L, index, "controllernumber");
-        luaEvent.event.controllerChange.velocity = luaU_getfield<unsigned int>(L, index, "velocity");
+        luaEvent.event.controllerChange.velocity = luamidievent_getvelocity(L, index, "velocity");
         break;
     case Event::ProgramChange:
         luaEvent.event.programChange.newProgramNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
@@ -44,7 +55,7 @@ inline LuaMidiEvent luaU_check<>(lua_State* L, int index)
     case Event::Meta:
         break;
     }
-    return event;
+    return luaEvent;
 }
 
 LuaEventProducer::LuaEventProducer(const char* filename)
@@ -88,7 +99,7 @@ const Event* LuaEventProducer::getNextEvent(unsigned int& absoluteTime)
 unsigned int LuaEventProducer::getInitialTempo()
 {
     lua_getglobal(m_L, "tempo");
-    unsigned int tempo = lua_tointeger(m_L);
+    unsigned int tempo = lua_tointeger(m_L, -1);
     lua_pop(m_L, 1);
     return tempo ? tempo : 120;
 }

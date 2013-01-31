@@ -10,7 +10,7 @@ int luamidiutils_pushinstrumentenums(lua_State* L);
 
 struct LuaMidiEvent
 {
-    Event event;
+    midi::Event event;
     unsigned int absoluteTime;
 };
 
@@ -26,8 +26,6 @@ public:
 private:
     lua_State* m_L;
     LuaMidiEvent m_event;
-    //unsigned int m_tempo;
-    //unsigned int m_absoluteTime;
 };
 
 #endif // LUA_MIDI_UTILS_

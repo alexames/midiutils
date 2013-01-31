@@ -6,7 +6,7 @@ require 'luamidiutils'
 --lmu.readfile(midifile, 'example.mid')
 --prod = lmu.MidiFileEventProducer.new(midifile)
 
-prod = lmu.LuaEventProducer.new('midi.lua')
+prod = lmu.LuaEventProducer.new('eventgenerator.lua')
 
 stream = lmu.MidiStream.new(prod)
 stream:play()
