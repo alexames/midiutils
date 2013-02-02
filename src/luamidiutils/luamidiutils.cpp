@@ -8,6 +8,7 @@
 
 #include <fstream>
 #include <exception>
+#include <memory>
 
 #define LUAMIDIUTILS_EXPORT __declspec(dllexport)
 
@@ -113,10 +114,27 @@ static luaL_Reg MidiStream_metatable[] =
 	{ NULL, NULL }
 };
 
-LuaEventProducer* LuaEventProducer_ctor(lua_State* L)
+////////////////////////////////////////////////////////////////////////////////
+
+
+int LuaEventProducer_recieveMessage(lua_State* L)
 {
-    return new LuaEventProducer(luaL_checkstring(L, 1));
+    LuaEventProducer* producer = luaW_check<LuaEventProducer>(L, 1);
+    const char* messagestring = luaL_checkstring(L, 2);
+    if (messagestring && messagestring[0])
+    {
+        producer->recieveMessage(string(messagestring));
+    }
+    return 0;
 }
+
+static luaL_Reg LuaEventProducer_metatablesender[] =
+{
+    { "recievemessage", LuaEventProducer_recieveMessage },
+    { NULL, NULL }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 
 extern "C"
 {
@@ -138,14 +156,14 @@ LUAMIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
 	luaW_register<MidiStream>(L, "MidiStream", NULL, MidiStream_metatable, MidiStream_ctor);
 	lua_setfield(L, -2, "MidiStream");
 
-    luaW_register<LuaEventProducer>(L, "LuaEventProducer", NULL, NULL, LuaEventProducer_ctor);
+    luamidiutils_pushLuaEventProducer(L, LuaEventProducer_metatablesender);
 	luaW_extend<LuaEventProducer, EventProducer>(L);
 	lua_setfield(L, -2, "LuaEventProducer");
 
-    luamidiutils_pushinstrumentenums(L);
+    luamidiutils_pushInstrumentEnums(L);
 	lua_setfield(L, -2, "instrument");
 
-    luamidiutils_pushcommandenums(L);
+    luamidiutils_pushCommandEnums(L);
 	lua_setfield(L, -2, "command");
 
 	return 1;

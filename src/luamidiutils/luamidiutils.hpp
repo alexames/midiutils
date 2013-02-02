@@ -3,10 +3,15 @@
 
 #include "midiutils.hpp"
 
-struct lua_State;
+#include <memory>
+#include <deque>
 
-int luamidiutils_pushcommandenums(lua_State* L);
-int luamidiutils_pushinstrumentenums(lua_State* L);
+struct lua_State;
+struct luaL_Reg;
+
+int luamidiutils_pushCommandEnums(lua_State* L);
+int luamidiutils_pushInstrumentEnums(lua_State* L);
+int luamidiutils_pushLuaEventProducer(lua_State* L, luaL_Reg* metatable);
 
 struct LuaMidiEvent
 {
@@ -22,10 +27,14 @@ public:
 
     virtual const midi::Event* getNextEvent(unsigned int& absoluteTime);
     virtual unsigned int getTicksPerBeat();
-
+    
+    void recieveMessage(std::string message);
+    std::string getNextMessage();
+    
 private:
     lua_State* m_L;
     LuaMidiEvent m_event;
+    std::deque<std::string> m_pendingMessages;
 };
 
 #endif // LUA_MIDI_UTILS_

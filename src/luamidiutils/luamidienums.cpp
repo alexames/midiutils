@@ -7,7 +7,7 @@
 
 using namespace midi;
 
-int luamidiutils_pushcommandenums(lua_State* L)
+int luamidiutils_pushCommandEnums(lua_State* L)
 {
 	lua_newtable(L);
 	luaU_setenum(L, -1, "noteend", Event::NoteEnd);
@@ -21,7 +21,7 @@ int luamidiutils_pushcommandenums(lua_State* L)
     return 1;
 }
 
-int luamidiutils_pushinstrumentenums(lua_State* L)
+int luamidiutils_pushInstrumentEnums(lua_State* L)
 {
 	lua_newtable(L);
 	luaU_setenum(L, -1, "acousticgrand", Acoustic_Grand);

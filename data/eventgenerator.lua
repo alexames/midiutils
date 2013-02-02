@@ -6,7 +6,11 @@ i = 0
 time = 100
 on = true
 
-function getnextevent()
+function getnextevent(producer)
+    local message = producer:getnextmessage()
+    if message then 
+        print(message)
+    end
     local event
     if on then
         event = {

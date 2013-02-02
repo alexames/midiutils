@@ -10,5 +10,3 @@ prod = lmu.LuaEventProducer.new('eventgenerator.lua')
 
 stream = lmu.MidiStream.new(prod)
 stream:play()
-
-while true do end
