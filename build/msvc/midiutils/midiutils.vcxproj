@@ -66,7 +66,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\midiutils\midiplay.cpp" />
+    <ClCompile Include="..\..\..\src\midiutils\midifileeventproducer.cpp" />
     <ClCompile Include="..\..\..\src\midiutils\midiread.cpp" />
     <ClCompile Include="..\..\..\src\midiutils\midiwrite.cpp" />
     <ClCompile Include="..\..\..\src\midiutils\win32\midistreamimpl.cpp" />

@@ -23,7 +23,7 @@
     <ClCompile Include="..\..\..\src\midiutils\win32\midistreamimpl.cpp">
       <Filter>src\win</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\midiutils\midiplay.cpp">
+    <ClCompile Include="..\..\..\src\midiutils\midifileeventproducer.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
