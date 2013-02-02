@@ -219,7 +219,7 @@ const Event* MidiFileEventProducer::getNextEvent(unsigned int& absoluteTime)
 	return bestEvent;
 }
 
-unsigned int MidiFileEventProducer::getInitialTempo()
+unsigned int MidiFileEventProducer::getTicksPerBeat()
 {
 	return m_midi->ticks;
 }
@@ -282,7 +282,7 @@ static MidiStreamImpl* createStreamImpl(EventProducer& producer)
 
 	MIDIPROPTIMEDIV prop;
 	prop.cbStruct = sizeof(MIDIPROPTIMEDIV);
-	prop.dwTimeDiv = producer.getInitialTempo();
+	prop.dwTimeDiv = producer.getTicksPerBeat();
 	midiStreamProperty(stream->midiStreamHandle, (LPBYTE)&prop, MIDIPROP_SET|MIDIPROP_TIMEDIV);
 	
 	return stream;
@@ -313,11 +313,25 @@ void MidiStream::play()
 	midiStreamRestart(impl->midiStreamHandle);
 }
 
-unsigned int MidiStream::getPosition() const
+unsigned int MidiStream::getMilliseconds() const
 {
 	MMTIME time;
 	time.wType = TIME_MIDI; 
 	if (midiStreamPosition(impl->midiStreamHandle, &time, sizeof(MMTIME)) || time.wType != TIME_MIDI)
+	{
+		throw exception("error requesting stream position");
+	}
+	else
+	{
+		return time.u.midi.songptrpos;
+	}
+}
+
+unsigned int MidiStream::getTicks() const
+{
+	MMTIME time;
+	time.wType = TIME_TICKS; 
+	if (midiStreamPosition(impl->midiStreamHandle, &time, sizeof(MMTIME)) || time.wType != TIME_TICKS)
 	{
 		throw exception("error requesting stream position");
 	}

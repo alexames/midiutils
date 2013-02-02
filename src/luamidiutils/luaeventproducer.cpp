@@ -96,10 +96,10 @@ const Event* LuaEventProducer::getNextEvent(unsigned int& absoluteTime)
     }
 }
 
-unsigned int LuaEventProducer::getInitialTempo()
+unsigned int LuaEventProducer::getTicksPerBeat()
 {
-    lua_getglobal(m_L, "tempo");
+    lua_getglobal(m_L, "ticksperbeat");
     unsigned int tempo = lua_tointeger(m_L, -1);
     lua_pop(m_L, 1);
-    return tempo ? tempo : 120;
+    return tempo ? tempo : 96;
 }

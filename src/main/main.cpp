@@ -21,7 +21,8 @@ int main(int argc, char* argv[])
     midi::MidiStream stream(producer);
     stream.play();
     
-    while (true) ;
+    while (true)
+        cout << (stream.getTicks() / 96) << endl;
 
     return 0;
 }

@@ -370,7 +370,7 @@ class EventProducer
 {
 public:
 	virtual const Event* getNextEvent(unsigned int& absoluteTime) = 0;
-	virtual unsigned int getInitialTempo() = 0;
+	virtual unsigned int getTicksPerBeat() = 0;
 };
 
 class MidiFileEventProducer : public EventProducer
@@ -379,7 +379,7 @@ public:
 	MidiFileEventProducer(MidiFile& midi);
 
 	virtual const Event* getNextEvent(unsigned int& absoluteTime);
-	virtual unsigned int getInitialTempo();
+	virtual unsigned int getTicksPerBeat();
 
 private:
 	MidiFile* m_midi;
@@ -395,7 +395,8 @@ public:
 	~MidiStream();
 	
 	void play();
-	unsigned int getPosition() const;
+	unsigned int getMilliseconds() const;
+	unsigned int getTicks() const;
 
 private: 
 	MidiStreamImpl* impl;

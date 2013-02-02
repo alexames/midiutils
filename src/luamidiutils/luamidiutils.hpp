@@ -21,7 +21,7 @@ public:
     ~LuaEventProducer();
 
     virtual const midi::Event* getNextEvent(unsigned int& absoluteTime);
-    virtual unsigned int getInitialTempo();
+    virtual unsigned int getTicksPerBeat();
 
 private:
     lua_State* m_L;
