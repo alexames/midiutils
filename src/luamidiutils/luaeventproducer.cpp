@@ -84,7 +84,7 @@ inline LuaMidiEvent luaU_check<>(lua_State* L, int index)
         luaEvent.event.controllerChange.velocity = luamidievent_getvelocity(L, index, "velocity");
         break;
     case Event::ProgramChange:
-        luaEvent.event.programChange.newProgramNumber = luaU_getfield<unsigned int>(L, index, "notenumber");
+        luaEvent.event.programChange.newProgramNumber = luaU_getfield<unsigned int>(L, index, "programnumber");
         break;
     case Event::ChannelPressureChange:
         luaEvent.event.channelPressureChange.channelNumber= luaU_getfield<unsigned int>(L, index, "channelnumber");
