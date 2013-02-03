@@ -117,20 +117,20 @@ static luaL_Reg MidiStream_metatable[] =
 ////////////////////////////////////////////////////////////////////////////////
 
 
-int LuaEventProducer_recieveMessage(lua_State* L)
+int LuaEventProducer_sendMessage(lua_State* L)
 {
     LuaEventProducer* producer = luaW_check<LuaEventProducer>(L, 1);
     const char* messagestring = luaL_checkstring(L, 2);
     if (messagestring && messagestring[0])
     {
-        producer->recieveMessage(string(messagestring));
+        producer->sendMessage(string(messagestring));
     }
     return 0;
 }
 
 static luaL_Reg LuaEventProducer_metatablesender[] =
 {
-    { "recievemessage", LuaEventProducer_recieveMessage },
+    { "sendmessage", LuaEventProducer_sendMessage },
     { NULL, NULL }
 };
 
@@ -161,10 +161,10 @@ LUAMIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
 	lua_setfield(L, -2, "LuaEventProducer");
 
     luamidiutils_pushInstrumentEnums(L);
-	lua_setfield(L, -2, "instrument");
+	lua_setfield(L, -2, "instruments");
 
     luamidiutils_pushCommandEnums(L);
-	lua_setfield(L, -2, "command");
+	lua_setfield(L, -2, "commands");
 
 	return 1;
 }

@@ -1,67 +1,44 @@
+package.path = './?.lua;./?/init.lua'
+
 require 'scales'
---require 'midi'
+require 'messages'
 
-note = 60
-i = 0
-time = 100
-on = true
-
-counter = 0
-
-commands = {}
-
-function commands.changeinstrument(channel, instrumentname)
-    return {
-        time = time;
-        command = command.programchange;
-        channel = channel;
-        programnumber = instrument[instrumentname]
-    }
-end
+context = { 
+    note = 60;
+    i = 0;
+    time = 1;
+    on = true;
+    counter = 0;
+}
 
 function getnextevent(producer)
-    counter = counter + 1
 
-    if counter >= 10 then
-        counter = 0;
-        return nil;
-    else
-        local message = producer:getnextmessage()
-        if message then
-            print("message", message)
-            local cmd, param1, param2 = message:match('(%w+)%s+(%w+)%s+(%w+)')
-            if cmd then
-                if commands[cmd] then
-                    print("running command")
-                    return commands[cmd](param1, param2)
-                else
-                    print('unknown command ' .. cmd)
-                end
-            end
-        end
-        
-        local event
-        if on then
-            event = {
-                time = time;
-                command = command.notebegin;
-                channel = 0;
-                notenumber = note + Scale.major[i];
-                velocity = .9;
-            }
-            time = time + 100;
-        else
-            event = {
-                time = time;
-                command = command.noteend;
-                channel = 0;
-                notenumber = note + Scale.major[i];
-                velocity = .9;
-            }
-            i = i + 1
-            if i >= 8 then i = 0 end
-        end
-        on = not on
-        return event
+    local event = handlemessages(producer, context, print)
+    if event then return event end
+    if context.i >= 8 then
+        context.i = 0
+        print('lol')
+        return nil 
     end
+    if context.on then
+        event = {
+            time = context.time;
+            command = commands.notebegin;
+            channel = 0;
+            notenumber = context.note + Scale.major[context.i];
+            velocity = .9;
+        }
+        context.time = context.time + 1;
+    else
+        event = {
+            time = context.time;
+            command = commands.noteend;
+            channel = 0;
+            notenumber = context.note + Scale.major[context.i];
+            velocity = .9;
+        }
+        context.i = context.i + 1
+    end
+    context.on = not context.on
+    return event
 end

@@ -16,7 +16,7 @@ int luamidiutils_pushLuaEventProducer(lua_State* L, luaL_Reg* metatable);
 struct LuaMidiEvent
 {
     midi::Event event;
-    unsigned int absoluteTime;
+    double absoluteTime;
 };
 
 class LuaEventProducer : public midi::EventProducer
@@ -28,12 +28,13 @@ public:
     virtual const midi::Event* getNextEvent(unsigned int& absoluteTime);
     virtual unsigned int getTicksPerBeat();
     
-    void recieveMessage(std::string message);
+    void sendMessage(std::string message);
     std::string getNextMessage();
     
 private:
     lua_State* m_L;
     LuaMidiEvent m_event;
+    unsigned int m_ticksPerBeat;
     std::deque<std::string> m_pendingMessages;
 };
 

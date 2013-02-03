@@ -53,4 +53,4 @@ unsigned int MidiFileEventProducer::getTicksPerBeat()
 	return m_midi->ticks;
 }
 
-}// namespace midi
+} // namespace midi

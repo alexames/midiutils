@@ -6,6 +6,7 @@
 #include "lua.hpp"
 
 #include <string>
+#include <iostream>
 
 using namespace midi;
 using namespace std;
@@ -62,7 +63,7 @@ inline LuaMidiEvent luaU_check<>(lua_State* L, int index)
 {
     LuaMidiEvent luaEvent;
     luaEvent.event.timeDelta = luaU_getfield<unsigned int>(L, index, "timedelta");
-    luaEvent.absoluteTime = luaU_getfield<unsigned int>(L, index, "time");
+    luaEvent.absoluteTime = luaU_getfield<double>(L, index, "time");
     luaEvent.event.command = static_cast<Event::Command>(luaU_getfield<int>(L, index, "command"));
     luaEvent.event.channel = luaU_getfield<unsigned int>(L, index, "channel");
     switch (luaEvent.event.command)
@@ -100,6 +101,7 @@ inline LuaMidiEvent luaU_check<>(lua_State* L, int index)
 LuaEventProducer::LuaEventProducer(const char* filename)
     : m_L(luaL_newstate())
     , m_event()
+    , m_ticksPerBeat(0)
     , m_pendingMessages()
 {
     luaL_openlibs(m_L);
@@ -108,12 +110,23 @@ LuaEventProducer::LuaEventProducer(const char* filename)
     lua_setglobal(m_L, "LuaEventProducer");
 
     luamidiutils_pushCommandEnums(m_L);
-    lua_setglobal(m_L, "command");
+    lua_setglobal(m_L, "commands");
 
     luamidiutils_pushInstrumentEnums(m_L);
-    lua_setglobal(m_L, "instrument");
+    lua_setglobal(m_L, "instruments");
 
-    luaL_dofile(m_L, filename);
+    if (luaL_dofile(m_L, filename))
+    {
+        printf("LuaEventProducer::LuaEventProducer: %s\n", lua_tostring(m_L, -1));
+        lua_pop(m_L, 1);
+    }
+
+    lua_getglobal(m_L, "ticksperbeat");
+    m_ticksPerBeat = lua_tointeger(m_L, -1);
+    lua_pop(m_L, 1);
+
+    if (m_ticksPerBeat == 0) 
+        m_ticksPerBeat = 96;
 }
 
 LuaEventProducer::~LuaEventProducer()
@@ -125,30 +138,34 @@ const Event* LuaEventProducer::getNextEvent(unsigned int& absoluteTime)
 {
     lua_getglobal(m_L, "getnextevent");
     luaW_push(m_L, this);
-    lua_call(m_L, 1, 1);
-    if (lua_istable(m_L, -1))
+    if (lua_pcall(m_L, 1, 1, 0) == 0)
     {
-        m_event = luaU_check<LuaMidiEvent>(m_L, -1);
-        absoluteTime = m_event.absoluteTime;
-        lua_pop(m_L, 1);
-        return &m_event.event;
+        if (lua_istable(m_L, -1))
+        {
+            m_event = luaU_check<LuaMidiEvent>(m_L, -1);
+            absoluteTime = static_cast<unsigned int>(m_event.absoluteTime * m_ticksPerBeat);
+            lua_pop(m_L, 1);
+            return &m_event.event;
+        }
+        else
+        {
+            lua_pop(m_L, 1);
+        }
     }
     else
     {
+        printf("LuaEventProducer::getNextEvent: %s\n", lua_tostring(m_L, -1));
         lua_pop(m_L, 1);
-        return nullptr;
     }
+    return nullptr;
 }
 
 unsigned int LuaEventProducer::getTicksPerBeat()
 {
-    lua_getglobal(m_L, "ticksperbeat");
-    unsigned int tempo = lua_tointeger(m_L, -1);
-    lua_pop(m_L, 1);
-    return tempo ? tempo : 96;
+    return m_ticksPerBeat;
 }
 
-void LuaEventProducer::recieveMessage(string message)
+void LuaEventProducer::sendMessage(string message)
 {
     m_pendingMessages.push_back(message);
 }
