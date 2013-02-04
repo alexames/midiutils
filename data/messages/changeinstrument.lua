@@ -1,5 +1,4 @@
 function messages.changeinstrument(context, channel, nameorid)
-    print 'changing instument!'
     context:pushevent
     {
         time = context.sortedevents[#context.sortedevents].time;
