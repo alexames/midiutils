@@ -46,12 +46,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\..\src\luamidiutils;..\..\..\extlib\luawrapper;..\..\..\pub;$(Lua_Dir)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\..\src\luamidiutils;..\..\..\extlib\luawrapper;..\..\..\pub;..\..\..\extlib\lua-5.1\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>midiutils.lib;winmm.lib;lua51.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\bin\$(Configuration)\;$(LUA_DIR)\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>midiutils.lib;winmm.lib;lua-5.1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\bin\$(Configuration)\</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

@@ -3,7 +3,7 @@
 
 #include "LuaWrapper.hpp"
 #include "LuaWrapperUtil.hpp"
-#include "lua.hpp"
+#include "lua.h"
 
 using namespace midi;
 

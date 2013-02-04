@@ -3,7 +3,9 @@
 
 #include "LuaWrapper.hpp"
 #include "LuaWrapperUtil.hpp"
-#include "lua.hpp"
+#include "lua.h"
+#include "lauxlib.h"
+#include "lualib.h"
 
 #include <string>
 #include <iostream>

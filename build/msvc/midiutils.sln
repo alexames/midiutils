@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "luamidiutils", "luamidiutil
 		{3BA97229-E30E-4F9E-B861-32381E3451DE} = {3BA97229-E30E-4F9E-B861-32381E3451DE}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lua-5.1-lib", "lua-5.1\lua-5.1.vcxproj", "{D894CF97-4EE5-4E61-B7E7-B768B4400A06}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -31,6 +33,10 @@ Global
 		{DC988501-53F7-438A-87C3-47671D82F56F}.Debug|Win32.Build.0 = Debug|Win32
 		{DC988501-53F7-438A-87C3-47671D82F56F}.Release|Win32.ActiveCfg = Release|Win32
 		{DC988501-53F7-438A-87C3-47671D82F56F}.Release|Win32.Build.0 = Release|Win32
+		{D894CF97-4EE5-4E61-B7E7-B768B4400A06}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D894CF97-4EE5-4E61-B7E7-B768B4400A06}.Debug|Win32.Build.0 = Debug|Win32
+		{D894CF97-4EE5-4E61-B7E7-B768B4400A06}.Release|Win32.ActiveCfg = Release|Win32
+		{D894CF97-4EE5-4E61-B7E7-B768B4400A06}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
