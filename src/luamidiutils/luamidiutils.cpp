@@ -118,21 +118,25 @@ static luaL_Reg MidiStream_metatable[] =
 
 ////////////////////////////////////////////////////////////////////////////////
 
+LuaEventProducer* LuaEventProducer_ctor(lua_State* L)
+{
+    return new LuaEventProducer(luaL_checkstring(L, 1));
+}
 
-int LuaEventProducer_sendMessage(lua_State* L)
+int LuaEventProducer_pushMessage(lua_State* L)
 {
     LuaEventProducer* producer = luaW_check<LuaEventProducer>(L, 1);
     const char* messagestring = luaL_checkstring(L, 2);
     if (messagestring && messagestring[0])
     {
-        producer->sendMessage(string(messagestring));
+        producer->pushMessage(string(messagestring));
     }
     return 0;
 }
 
 static luaL_Reg LuaEventProducer_metatablesender[] =
 {
-    { "sendmessage", LuaEventProducer_sendMessage },
+    { "pushmessage", LuaEventProducer_pushMessage },
     { NULL, NULL }
 };
 
@@ -154,11 +158,11 @@ LUAMIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
 	luaW_register<MidiFileEventProducer>(L, "MidiFileEventProducer", NULL, NULL, MidiFileEventProducer_ctor);
 	luaW_extend<MidiFileEventProducer, EventProducer>(L);
 	lua_setfield(L, -2, "MidiFileEventProducer");
-
+    
 	luaW_register<MidiStream>(L, "MidiStream", NULL, MidiStream_metatable, MidiStream_ctor);
 	lua_setfield(L, -2, "MidiStream");
 
-    luamidiutils_pushLuaEventProducer(L, LuaEventProducer_metatablesender);
+	luaW_register<LuaEventProducer>(L, "MidiStream", NULL, LuaEventProducer_metatablesender, LuaEventProducer_ctor);
 	luaW_extend<LuaEventProducer, EventProducer>(L);
 	lua_setfield(L, -2, "LuaEventProducer");
 

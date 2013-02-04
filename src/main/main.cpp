@@ -1,28 +1,33 @@
 #include "midiutils.hpp"
+#include "luamidiutils.hpp"
 
 #include <string>
-#include <fstream>
 #include <iostream>
 
 using namespace std;
+using namespace midi;
 
 int main(int argc, char* argv[])
 {
-    const string filename = "..\\..\\..\\data\\example.mid";
-    midi::MidiFile midi;
-    
-    ifstream file(filename, ios::binary);
-    midi::readFile(midi, file);
-    
-    //ofstream output("..\\output.mid", ios::binary);
-    //midi::writeFile(midi, output);
-
-    midi::MidiFileEventProducer producer(midi);
-    midi::MidiStream stream(producer);
-    stream.play();
-    
-    while (true)
-        cout << (stream.getTicks() / 96) << endl;
-
+    if (argc == 2)
+    {
+        try
+        {
+            const char* filename = argv[1];
+            LuaEventProducer producer(filename);
+            MidiStream stream(producer);
+            stream.play();
+            string line;
+            while(getline(cin, line))
+            {
+                producer.pushMessage(line);
+            }
+        }
+        catch(exception& ex)
+        {
+            cout << ex.what() << endl;
+        }
+    }
+    while (true);
     return 0;
 }

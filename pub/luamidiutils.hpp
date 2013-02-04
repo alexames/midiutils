@@ -25,11 +25,11 @@ public:
     LuaEventProducer(const char* filename);
     ~LuaEventProducer();
 
+    virtual void preBufferFill();
     virtual const midi::Event* getNextEvent(unsigned int& absoluteTime);
     virtual unsigned int getTicksPerBeat();
     
-    void sendMessage(std::string message);
-    std::string getNextMessage();
+    void pushMessage(std::string message);
     
 private:
     lua_State* m_L;

@@ -1,7 +1,6 @@
 messages = { }
 
-function handlemessages(producer, context)
-    local message = producer:getnextmessage()
+function handlemessage(context, message)
     if message then
         local cmd, param1, param2 = message:match('(%w+)%s+(%w+)%s+(%w+)')
         if cmd then

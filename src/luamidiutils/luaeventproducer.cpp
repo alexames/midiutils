@@ -15,40 +15,6 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-LuaEventProducer* LuaEventProducer_ctor(lua_State* L)
-{
-    return new LuaEventProducer(luaL_checkstring(L, 1));
-}
-
-int LuaEventProducer_getNextMessage(lua_State* L)
-{
-    LuaEventProducer* producer = luaW_check<LuaEventProducer>(L, 1);
-    string message = producer->getNextMessage();
-    if (message.length())
-    {
-        lua_pushstring(L, message.c_str());
-        return 1;
-    }
-    else
-    {
-        return 0;
-    }
-}
-
-static luaL_Reg LuaEventProducer_getNextMessageTable[] =
-{
-    { "getnextmessage", LuaEventProducer_getNextMessage },
-    { NULL, NULL }
-};
-
-int luamidiutils_pushLuaEventProducer(lua_State* L, luaL_Reg* metatable)
-{
-    luaW_register<LuaEventProducer>(L, "LuaEventProducer", NULL, metatable, LuaEventProducer_ctor);
-    return 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 unsigned int luamidievent_getvelocity(lua_State* L, int index, const char* field)
 {
     double value = luaU_getfield<unsigned int>(L, index, field);
@@ -100,35 +66,41 @@ inline LuaMidiEvent luaU_check<>(lua_State* L, int index)
     return luaEvent;
 }
 
-LuaEventProducer::LuaEventProducer(const char* filename)
-    : m_L(luaL_newstate())
-    , m_event()
-    , m_ticksPerBeat(0)
-    , m_pendingMessages()
+lua_State* LuaEventProducer_prepareLuaState(const char* filename)
 {
-    luaL_openlibs(m_L);
+    lua_State* L = luaL_newstate();
+    luaL_openlibs(L);
 
-    luamidiutils_pushLuaEventProducer(m_L, LuaEventProducer_getNextMessageTable);
-    lua_setglobal(m_L, "LuaEventProducer");
+    luamidiutils_pushCommandEnums(L);
+    lua_setglobal(L, "commands");
 
-    luamidiutils_pushCommandEnums(m_L);
-    lua_setglobal(m_L, "commands");
+    luamidiutils_pushInstrumentEnums(L);
+    lua_setglobal(L, "instruments");
 
-    luamidiutils_pushInstrumentEnums(m_L);
-    lua_setglobal(m_L, "instruments");
-
-    if (luaL_dofile(m_L, filename))
+    if (luaL_dofile(L, filename))
     {
-        printf("LuaEventProducer::LuaEventProducer: %s\n", lua_tostring(m_L, -1));
-        lua_pop(m_L, 1);
+        exception ex(lua_tostring(L, -1));
+        lua_close(L);
+        throw ex;
     }
 
-    lua_getglobal(m_L, "ticksperbeat");
-    m_ticksPerBeat = lua_tointeger(m_L, -1);
-    lua_pop(m_L, 1);
+    return L;
+}
 
-    if (m_ticksPerBeat == 0) 
-        m_ticksPerBeat = 96;
+unsigned int LuaEventProducer_getTicksPerBeat(lua_State* L)
+{
+    lua_getglobal(L, "ticksperbeat");
+    unsigned int ticksPerBeat = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+    return ticksPerBeat ? ticksPerBeat : 96;
+}
+
+LuaEventProducer::LuaEventProducer(const char* filename)
+    : m_L(LuaEventProducer_prepareLuaState(filename))
+    , m_event()
+    , m_ticksPerBeat(LuaEventProducer_getTicksPerBeat(m_L))
+    , m_pendingMessages()
+{
 }
 
 LuaEventProducer::~LuaEventProducer()
@@ -136,10 +108,45 @@ LuaEventProducer::~LuaEventProducer()
     lua_close(m_L);
 }
 
+void LuaEventProducer_handleMessages(lua_State* L, deque<string>& pendingMessages)
+{
+    lua_getglobal(L, "handlemessage");
+    lua_getglobal(L, "context");
+    for (auto iter = begin(pendingMessages); iter != end(pendingMessages); iter++)
+    {
+        lua_pushvalue(L, -2);
+        lua_pushvalue(L, -2);
+        lua_pushstring(L, iter->c_str());
+        if (lua_pcall(L, 2, 0, 0))
+        {
+            printf("LuaEventProducer_handleMessages: %s\n", lua_tostring(L, -1));
+            lua_pop(L, 1);
+        }
+    }
+    pendingMessages.clear();
+}
+
+void LuaEventProducer_prepareEvents(lua_State* L)
+{
+    lua_getglobal(L, "prepareevents");
+    lua_getglobal(L, "context");
+    if (lua_pcall(L, 1, 0, 0))
+    {
+        printf("LuaEventProducer_prepareEvents: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
+void LuaEventProducer::preBufferFill()
+{
+    LuaEventProducer_handleMessages(m_L, m_pendingMessages);
+    LuaEventProducer_prepareEvents(m_L);
+}
+
 const Event* LuaEventProducer::getNextEvent(unsigned int& absoluteTime)
 {
     lua_getglobal(m_L, "getnextevent");
-    luaW_push(m_L, this);
+    lua_getglobal(m_L, "context");
     if (lua_pcall(m_L, 1, 1, 0) == 0)
     {
         if (lua_istable(m_L, -1))
@@ -167,21 +174,8 @@ unsigned int LuaEventProducer::getTicksPerBeat()
     return m_ticksPerBeat;
 }
 
-void LuaEventProducer::sendMessage(string message)
+void LuaEventProducer::pushMessage(string message)
 {
     m_pendingMessages.push_back(message);
 }
 
-string LuaEventProducer::getNextMessage()
-{
-    if (m_pendingMessages.size())
-    {
-        string message = m_pendingMessages.front();
-        m_pendingMessages.pop_front();
-        return message;
-    }
-    else
-    {
-        return string();
-    }
-}
