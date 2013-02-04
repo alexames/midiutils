@@ -369,6 +369,7 @@ struct MidiStreamImpl;
 class EventProducer
 {
 public:
+    virtual void preBufferFill() { }
 	virtual const Event* getNextEvent(unsigned int& absoluteTime) = 0;
 	virtual unsigned int getTicksPerBeat() = 0;
 };

@@ -156,6 +156,7 @@ bool MidiEventBuffer::fillBuffer()
 	bool songFinished = true;
 	const Event* event;
 	unsigned int eventAbsoluteTime;
+    m_producer->preBufferFill();
 	while ((m_bytesFilled[m_readyBufferIndex] < 4000) && (event = m_producer->getNextEvent(eventAbsoluteTime)))
 	{
 		songFinished = false;
