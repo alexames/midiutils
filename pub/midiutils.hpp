@@ -177,6 +177,13 @@ enum Instrument
 	Gunshot
 };
 
+// 
+// A midi event represents one of many commands a midi file can run. The Event 
+// structure is a union of all possible events. 
+//
+// Only regular events (i.e. not Meta events) are significant to the midi file
+// playback
+// 
 struct Event
 {
 	struct NoteEndEvent
@@ -357,6 +364,10 @@ struct Track
 	std::vector<Event> events;
 };
 
+// 
+// A structure representing a Midi file. A midi file consists of a format, the 
+// number of ticks per beat, and a list of tracks filled with midi events. 
+//
 struct MidiFile
 {	
 	Format format;
@@ -364,8 +375,11 @@ struct MidiFile
 	std::vector<Track> tracks;
 };
 
-struct MidiStreamImpl;
 
+// 
+// An EventProducer is an abstract base class, used by a MidiStream to produce
+// midi events to be played.
+// 
 class EventProducer
 {
 public:
@@ -374,6 +388,9 @@ public:
 	virtual unsigned int getTicksPerBeat() = 0;
 };
 
+// 
+// Produces the midi events from a given midi file for playback in a MidiStream
+// 
 class MidiFileEventProducer : public EventProducer
 {
 public:
@@ -389,6 +406,13 @@ private:
 	std::vector<unsigned int> m_absoluteTimes;
 };
 
+struct MidiStreamImpl;
+
+// 
+// A MidiStream provides functionality to play the midi events produced by a
+// given EventProducer source - typically a MidiFile, but it could also be from
+// a script or other procedural source. 
+//
 class MidiStream
 {
 public:
@@ -403,8 +427,18 @@ private:
 	MidiStreamImpl* impl;
 };
 
+//
+// Reads in bytes from `in` to populate the given MidiFile structure. Some files
+// have improperly formatted headers, but can nevertheless be read properly. 
+// Turning on the strict flag will reject files with those incorrectly formatted
+// files. 
+//
 void readFile(MidiFile& midi, std::istream& in, bool strict = false);
 
+//
+// Writes the given MidiFile to out. The result is a standard midi file that can
+// be read by any normal midi player program. 
+//
 void writeFile(const MidiFile& midi, std::ostream& out);
 
 } // namespace midi

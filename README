@@ -1,0 +1,44 @@
+midiutils is a small and fairly simple midi file utility library I wrote to
+simply deal with reading, writing and playing midi files. 
+
+Description
+
+midiutils is the main project, which consists of the core utilities to read,
+write and play midi files. The main library interface may be found in the ./pub
+directory. 
+
+MidiFiles, Tracks, and Events are plain structs rather than classes
+so that they may be freely modified in the case that other software would like
+to create or play a midi file. 
+
+The EventProducer was created as an abstract base class so that it could be
+used to gather events from a midi file or from some other source. This is
+mostly because this whole library exists so that I can toy around with
+procedural music generation, so I wanted a way to also gather midi events from,
+for example, Lua scripts. 
+
+luamidiutils is a Lua interface to midiutils. 
+
+main is a project which simply creates a Lua state with luamidiutils loaded,
+which then creates and runs a MidiStream, using a LuaEventProducer to produce
+Events from a script. 
+
+Copyright (c) 2013 Alexander Ames
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
