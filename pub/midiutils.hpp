@@ -383,8 +383,20 @@ struct MidiFile
 class EventProducer
 {
 public:
+    
+    // A function that runs immediately prior to filling a buffer with events
+    // to be played. Since this is not useful in all cases it's a no-op by
+    // default. 
     virtual void preBufferFill() { }
+    
+    // Returns the next event to be played. This function may be called 
+    // repeatedly by a MidiStream until its buffer reaches max capacity, or
+    // until a null pointer is returned. When a null pointer is encountered, 
+    // the buffered events are played and getNextEvent is not called again 
+    // until the buffered notes have been played. 
 	virtual const Event* getNextEvent(unsigned int& absoluteTime) = 0;
+    
+    // Returns the ticks per beat. 
 	virtual unsigned int getTicksPerBeat() = 0;
 };
 
@@ -419,8 +431,13 @@ public:
 	MidiStream(EventProducer& producer);
 	~MidiStream();
 	
+    // Begins playback of the stream. 
 	void play();
+    
+    // Returns the current position of the stream in milliseconds
 	unsigned int getMilliseconds() const;
+
+    // Returns the current position of the stream in ticks
 	unsigned int getTicks() const;
 
 private: 
