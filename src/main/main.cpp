@@ -9,25 +9,27 @@ using namespace midi;
 
 int main(int argc, char* argv[])
 {
-    if (argc == 2)
+    const char* filename;
+    if (argc >= 2)
+        filename = argv[1];
+    else
+        filename = "init.lua";
+
+    try
     {
-        try
+        LuaEventProducer producer(filename);
+        MidiStream stream(producer);
+        stream.play();
+        string line;
+        while(getline(cin, line))
         {
-            const char* filename = argv[1];
-            LuaEventProducer producer(filename);
-            MidiStream stream(producer);
-            stream.play();
-            string line;
-            while(getline(cin, line))
-            {
-                producer.pushMessage(line);
-            }
-        }
-        catch(exception& ex)
-        {
-            cout << ex.what() << endl;
+            producer.pushMessage(line);
         }
     }
-    while (true);
+    catch(exception& ex)
+    {
+        cout << ex.what() << endl;
+    }
+
     return 0;
 }
