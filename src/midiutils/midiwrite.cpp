@@ -74,7 +74,7 @@ static void writePitchWheelChangeEvent(Event::PitchWheelChangeEvent event, ostre
 
 static void writeMetaEvent(const Event::MetaEvent event, ostream& out)
 {
-    out.put(event.command);
+    out.put(static_cast<uint8_t>(event.command));
     out.put(event.length);
     for (int i = 0; i < event.length; i++)
         out.put(event.data[i]);
@@ -100,37 +100,37 @@ static void writeEventTime(unsigned int timeDelta, ostream& out)
 static void writeEvent(const Event& event, ostream& out, unsigned char& previousCommandByte)
 {
     writeEventTime(event.timeDelta, out);
-    unsigned char commandByte = event.command | event.channel;
-    if (commandByte != previousCommandByte || event.command == Event::Meta)
+    unsigned char commandByte = static_cast<uint8_t>(event.command) | event.channel;
+    if (commandByte != previousCommandByte || event.command == Event::Command::Meta)
     {
         out.put(commandByte);
         previousCommandByte = commandByte;
     }
     switch(event.command)
     {
-    case Event::NoteEnd:
+      case Event::Command::NoteEnd:
         writeNoteEndEvent(event.noteEnd, out);
         break;
-    case Event::NoteBegin:
+    case Event::Command::NoteBegin:
         writeNoteBeginEvent(event.noteBegin, out);
         break;
-    case Event::VelocityChange:
+    case Event::Command::VelocityChange:
         writeVelocityChangeEvent(event.velocityChange, out);
         break;
-    case Event::ControllerChange:
+    case Event::Command::ControllerChange:
         writeControllerChangeEvent(event.controllerChange, out);
         break;
-    case Event::ProgramChange:
+    case Event::Command::ProgramChange:
         writeProgramChangeEvent(event.programChange, out);
         break;
-    case Event::ChannelPressureChange:
+    case Event::Command::ChannelPressureChange:
         writeChannelPressureChangeEvent(event.channelPressureChange, out);
         break;
-    case Event::PitchWheelChange:
+    case Event::Command::PitchWheelChange:
         writePitchWheelChangeEvent(event.pitchWheelChange, out);
         break;
-    case Event::Meta:
-        writeMetaEvent(event.meta, out);
+    case Event::Command::Meta:
+        //writeMetaEvent(event.meta, out);
         break;
     default:
         throw std::exception();
@@ -155,8 +155,8 @@ static unsigned int getTrackLength(const Track& track)
             length += 1;
 
         // Command 
-        unsigned char commandByte = event.command | event.channel;
-        if (commandByte != previousCommandByte || event.command == Event::Meta)
+        uint8_t commandByte = static_cast<uint8_t>(event.command) | event.channel;
+        if (commandByte != previousCommandByte || event.command == Event::Command::Meta)
         {
             length += 1;
             previousCommandByte = commandByte;
@@ -166,20 +166,20 @@ static unsigned int getTrackLength(const Track& track)
         switch(event.command)
         {
         // One data byte
-        case Event::ProgramChange:
-        case Event::ChannelPressureChange:
+        case Event::Command::ProgramChange:
+        case Event::Command::ChannelPressureChange:
             length += 1;
             break;
         // Two data bytes
-        case Event::NoteEnd:
-        case Event::NoteBegin:
-        case Event::VelocityChange:
-        case Event::ControllerChange:
-        case Event::PitchWheelChange:
+        case Event::Command::NoteEnd:
+        case Event::Command::NoteBegin:
+        case Event::Command::VelocityChange:
+        case Event::Command::ControllerChange:
+        case Event::Command::PitchWheelChange:
             length += 2;
             break;
         // Variable data bytes
-        case Event::Meta:
+        case Event::Command::Meta:
             length += 2 + event.meta.length;
             break;
         }
@@ -203,7 +203,7 @@ void writeFile(const MidiFile& midi, std::ostream& out)
 {
     writeUInt32be(out, 'MThd');
     writeUInt32be(out,  0x0006);
-    writeUInt16be(out, midi.format);
+    writeUInt16be(out, static_cast<uint16_t>(midi.format));
     writeUInt16be(out, midi.tracks.size());
     writeUInt16be(out, midi.ticks);
     for (const Track& track : midi.tracks)

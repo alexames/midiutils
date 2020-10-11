@@ -1,0 +1,15 @@
+[submodule "third_party/hedley"]
+	path = third_party/hedley
+	url = git@github.com:alexames/hedley.git
+[submodule "third_party/lua"]
+	path = third_party/lua
+	url = git@github.com:alexames/lua.git
+[submodule "third_party/luawrapper"]
+	path = third_party/luawrapper
+	url = git@github.com:alexames/luawrapper.git
+[submodule "third_party/rtmidi"]
+	path = third_party/rtmidi
+	url = git@github.com:alexames/rtmidi.git
+[submodule "third_party/spdlog"]
+	path = third_party/spdlog
+	url = git@github.com:alexames/spdlog.git

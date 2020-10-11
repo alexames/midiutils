@@ -147,7 +147,7 @@ extern "C"
 
 LUAMIDIUTILS_EXPORT int luaopen_luamidiutils(lua_State* L)
 {
-	luaL_register(L, "lmu", luamidiutils_table);
+	luaL_newlib(L, luamidiutils_table);
 	
 	luaW_register<MidiFile>(L, "MidiFile", NULL, NULL);
 	lua_setfield(L, -2, "MidiFile");

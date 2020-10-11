@@ -1,156 +1,218 @@
-#include "luamidiutils.hpp"
-#include "midiutils.hpp"
-
 #include "LuaWrapper.hpp"
 #include "LuaWrapperUtil.hpp"
 #include "lua.h"
+#include "luamidiutils.hpp"
+#include "midiutils.hpp"
 
 using namespace midi;
 
-int luamidiutils_pushCommandEnums(lua_State* L)
-{
-	lua_newtable(L);
-	luaU_setenum(L, -1, "noteend", Event::NoteEnd);
-	luaU_setenum(L, -1, "notebegin", Event::NoteBegin);
-	luaU_setenum(L, -1, "velocitychange", Event::VelocityChange);
-	luaU_setenum(L, -1, "controllerchange", Event::ControllerChange);
-	luaU_setenum(L, -1, "programchange", Event::ProgramChange);
-	luaU_setenum(L, -1, "channelpressurechange", Event::ChannelPressureChange);
-	luaU_setenum(L, -1, "pitchwheelchange", Event::PitchWheelChange);
-	luaU_setenum(L, -1, "meta", Event::Meta);
-    return 1;
+int luamidiutils_pushCommandEnums(lua_State* L) {
+  lua_newtable(L);
+  luaU_setfield(L, -1, "noteend", static_cast<int>(Event::Command::NoteEnd));
+  luaU_setfield(L, -1, "notebegin", static_cast<int>(Event::Command::NoteBegin));
+  luaU_setfield(L, -1, "velocitychange",
+                static_cast<int>(Event::Command::VelocityChange));
+  luaU_setfield(L, -1, "controllerchange",
+                static_cast<int>(Event::Command::ControllerChange));
+  luaU_setfield(L, -1, "programchange", static_cast<int>(Event::Command::ProgramChange));
+  luaU_setfield(L, -1, "channelpressurechange",
+                static_cast<int>(Event::Command::ChannelPressureChange));
+  luaU_setfield(L, -1, "pitchwheelchange",
+                static_cast<int>(Event::Command::PitchWheelChange));
+  luaU_setfield(L, -1, "meta", static_cast<int>(Event::Command::Meta));
+  return 1;
 }
 
-int luamidiutils_pushInstrumentEnums(lua_State* L)
-{
-	lua_newtable(L);
-	luaU_setenum(L, -1, "acousticgrand", Acoustic_Grand);
-	luaU_setenum(L, -1, "brightacoustic", Bright_Acoustic);
-	luaU_setenum(L, -1, "electricgrand", Electric_Grand);
-	luaU_setenum(L, -1, "honkytonk", Honky_Tonk);
-	luaU_setenum(L, -1, "electricpiano_1", Electric_Piano_1);
-	luaU_setenum(L, -1, "electricpiano_2", Electric_Piano_2);
-	luaU_setenum(L, -1, "harpsichord", Harpsichord);
-	luaU_setenum(L, -1, "clav", Clav);
-	luaU_setenum(L, -1, "celesta", Celesta);
-	luaU_setenum(L, -1, "glockenspiel", Glockenspiel);
-	luaU_setenum(L, -1, "musicbox", Music_Box);
-	luaU_setenum(L, -1, "vibraphone", Vibraphone);
-	luaU_setenum(L, -1, "marimba", Marimba);
-	luaU_setenum(L, -1, "xylophone", Xylophone);
-	luaU_setenum(L, -1, "tubularbells", Tubular_Bells);
-	luaU_setenum(L, -1, "dulcimer", Dulcimer);
-	luaU_setenum(L, -1, "drawbarorgan", Drawbar_Organ);
-	luaU_setenum(L, -1, "percussiveorgan", Percussive_Organ);
-	luaU_setenum(L, -1, "rockorgan", Rock_Organ);
-	luaU_setenum(L, -1, "churchorgan", Church_Organ);
-	luaU_setenum(L, -1, "reedorgan", Reed_Organ);
-	luaU_setenum(L, -1, "accoridan", Accoridan);
-	luaU_setenum(L, -1, "harmonica", Harmonica);
-	luaU_setenum(L, -1, "tangoaccordian", Tango_Accordian);
-	luaU_setenum(L, -1, "acousticguitarnylon", Acoustic_Guitar_Nylon);
-	luaU_setenum(L, -1, "acousticguitarsteel", Acoustic_Guitar_Steel);
-	luaU_setenum(L, -1, "electricguitarjazz", Electric_Guitar_Jazz);
-	luaU_setenum(L, -1, "electricguitarclean", Electric_Guitar_Clean);
-	luaU_setenum(L, -1, "electricguitarmuted", Electric_Guitar_Muted);
-	luaU_setenum(L, -1, "overdrivenguitar", Overdriven_Guitar);
-	luaU_setenum(L, -1, "distortionguitar", Distortion_Guitar);
-	luaU_setenum(L, -1, "guitarharmonics", Guitar_Harmonics);
-	luaU_setenum(L, -1, "acousticbass", Acoustic_Bass);
-	luaU_setenum(L, -1, "electricbassfinger", Electric_Bassfinger);
-	luaU_setenum(L, -1, "electricbasspick", Electric_Basspick);
-	luaU_setenum(L, -1, "fretlessbass", Fretless_Bass);
-	luaU_setenum(L, -1, "slapbass1", Slap_Bass_1);
-	luaU_setenum(L, -1, "slapbass2", Slap_Bass_2);
-	luaU_setenum(L, -1, "synthbass1", Synth_Bass_1);
-	luaU_setenum(L, -1, "synthbass2", Synth_Bass_2);
-	luaU_setenum(L, -1, "violin", Violin);
-	luaU_setenum(L, -1, "viola", Viola);
-	luaU_setenum(L, -1, "cello", Cello);
-	luaU_setenum(L, -1, "contrabass", Contrabass);
-	luaU_setenum(L, -1, "tremolostrings", Tremolo_Strings);
-	luaU_setenum(L, -1, "pizzicatostrings", Pizzicato_Strings);
-	luaU_setenum(L, -1, "orchestralstrings", Orchestral_Strings);
-	luaU_setenum(L, -1, "timpani", Timpani);
-	luaU_setenum(L, -1, "stringensemble1", String_Ensemble_1);
-	luaU_setenum(L, -1, "stringensemble2", String_Ensemble_2);
-	luaU_setenum(L, -1, "synthstrings1", SynthStrings_1);
-	luaU_setenum(L, -1, "synthstrings2", SynthStrings_2);
-	luaU_setenum(L, -1, "choiraahs", Choir_Aahs);
-	luaU_setenum(L, -1, "voiceoohs", Voice_Oohs);
-	luaU_setenum(L, -1, "synthvoice", Synth_Voice);
-	luaU_setenum(L, -1, "orchestrahit", Orchestra_Hit);
-	luaU_setenum(L, -1, "trumpet", Trumpet);
-	luaU_setenum(L, -1, "trombone", Trombone);
-	luaU_setenum(L, -1, "tuba", Tuba);
-	luaU_setenum(L, -1, "mutedtrumpet", Muted_Trumpet);
-	luaU_setenum(L, -1, "frenchhorn", French_Horn);
-	luaU_setenum(L, -1, "brasssection", Brass_Section);
-	luaU_setenum(L, -1, "synthbrass1", SynthBrass_1);
-	luaU_setenum(L, -1, "synthbrass2", SynthBrass_2);
-	luaU_setenum(L, -1, "sopranosax", Soprano_Sax);
-	luaU_setenum(L, -1, "altosax", Alto_Sax);
-	luaU_setenum(L, -1, "tenorsax", Tenor_Sax);
-	luaU_setenum(L, -1, "baritonesax", Baritone_Sax);
-	luaU_setenum(L, -1, "oboe", Oboe);
-	luaU_setenum(L, -1, "englishhorn", English_Horn);
-	luaU_setenum(L, -1, "bassoon", Bassoon);
-	luaU_setenum(L, -1, "clarinet", Clarinet);
-	luaU_setenum(L, -1, "piccolo", Piccolo);
-	luaU_setenum(L, -1, "flute", Flute);
-	luaU_setenum(L, -1, "recorder", Recorder);
-	luaU_setenum(L, -1, "panflute", Pan_Flute);
-	luaU_setenum(L, -1, "blownbottle", Blown_Bottle);
-	luaU_setenum(L, -1, "skakuhachi", Skakuhachi);
-	luaU_setenum(L, -1, "whistle", Whistle);
-	luaU_setenum(L, -1, "ocarina", Ocarina);
-	luaU_setenum(L, -1, "lead1square", Lead_1_Square);
-	luaU_setenum(L, -1, "lead2sawtooth", Lead_2_Sawtooth);
-	luaU_setenum(L, -1, "lead3calliope", Lead_3_Calliope);
-	luaU_setenum(L, -1, "lead4chiff", Lead_4_Chiff);
-	luaU_setenum(L, -1, "lead5charang", Lead_5_Charang);
-	luaU_setenum(L, -1, "lead6voice", Lead_6_Voice);
-	luaU_setenum(L, -1, "lead7fifths", Lead_7_Fifths);
-	luaU_setenum(L, -1, "lead8basslead", Lead_8_Bass_Lead);
-	luaU_setenum(L, -1, "pad1new_age", Pad_1_New_Age);
-	luaU_setenum(L, -1, "pad2warm", Pad_2_Warm);
-	luaU_setenum(L, -1, "pad3polysynth", Pad_3_Polysynth);
-	luaU_setenum(L, -1, "pad4choir", Pad_4_Choir);
-	luaU_setenum(L, -1, "pad5bowed", Pad_5_Bowed);
-	luaU_setenum(L, -1, "pad6metallic", Pad_6_Metallic);
-	luaU_setenum(L, -1, "pad7halo", Pad_7_Halo);
-	luaU_setenum(L, -1, "pad8sweep", Pad_8_Sweep);
-	luaU_setenum(L, -1, "fx1rain", FX_1_Rain);
-	luaU_setenum(L, -1, "fx2soundtrack", FX_2_Soundtrack);
-	luaU_setenum(L, -1, "fx3crystal", FX_3_Crystal);
-	luaU_setenum(L, -1, "fx4atmosphere", FX_4_Atmosphere);
-	luaU_setenum(L, -1, "fx5brightness", FX_5_Brightness);
-	luaU_setenum(L, -1, "fx6goblins", FX_6_Goblins);
-	luaU_setenum(L, -1, "fx7echoes", FX_7_Echoes);
-	luaU_setenum(L, -1, "fx8scifi", FX_8_Scifi);
-	luaU_setenum(L, -1, "sitar", Sitar);
-	luaU_setenum(L, -1, "banjo", Banjo);
-	luaU_setenum(L, -1, "shamisen", Shamisen);
-	luaU_setenum(L, -1, "koto", Koto);
-	luaU_setenum(L, -1, "kalimba", Kalimba);
-	luaU_setenum(L, -1, "bagpipe", Bagpipe);
-	luaU_setenum(L, -1, "fiddle", Fiddle);
-	luaU_setenum(L, -1, "shanai", Shanai);
-	luaU_setenum(L, -1, "tinklebell", Tinkle_Bell);
-	luaU_setenum(L, -1, "agogo", Agogo);
-	luaU_setenum(L, -1, "steeldrums", Steel_Drums);
-	luaU_setenum(L, -1, "woodblock", Woodblock);
-	luaU_setenum(L, -1, "taikodrum", Taiko_Drum);
-	luaU_setenum(L, -1, "melodictom", Melodic_Tom);
-	luaU_setenum(L, -1, "synthdrum", Synth_Drum);
-	luaU_setenum(L, -1, "reversecymbal", Reverse_Cymbal);
-	luaU_setenum(L, -1, "guitarfret_noise", Guitar_Fret_Noise);
-	luaU_setenum(L, -1, "breathnoise", Breath_Noise);
-	luaU_setenum(L, -1, "seashore", Seashore);
-	luaU_setenum(L, -1, "birdtweet", Bird_Tweet);
-	luaU_setenum(L, -1, "telephonering", Telephone_Ring);
-	luaU_setenum(L, -1, "helicopter", Helicopter);
-	luaU_setenum(L, -1, "applause", Applause);
-	luaU_setenum(L, -1, "gunshot", Gunshot);
-    return 1;
+int luamidiutils_pushInstrumentEnums(lua_State* L) {
+  lua_newtable(L);
+  luaU_setfield(L, -1, "acousticgrand",
+                static_cast<int>(Instrument::Acoustic_Grand));
+  luaU_setfield(L, -1, "brightacoustic",
+                static_cast<int>(Instrument::Bright_Acoustic));
+  luaU_setfield(L, -1, "electricgrand",
+                static_cast<int>(Instrument::Electric_Grand));
+  luaU_setfield(L, -1, "honkytonk", static_cast<int>(Instrument::Honky_Tonk));
+  luaU_setfield(L, -1, "electricpiano_1",
+                static_cast<int>(Instrument::Electric_Piano_1));
+  luaU_setfield(L, -1, "electricpiano_2",
+                static_cast<int>(Instrument::Electric_Piano_2));
+  luaU_setfield(L, -1, "harpsichord",
+                static_cast<int>(Instrument::Harpsichord));
+  luaU_setfield(L, -1, "clav", static_cast<int>(Instrument::Clav));
+  luaU_setfield(L, -1, "celesta", static_cast<int>(Instrument::Celesta));
+  luaU_setfield(L, -1, "glockenspiel",
+                static_cast<int>(Instrument::Glockenspiel));
+  luaU_setfield(L, -1, "musicbox", static_cast<int>(Instrument::Music_Box));
+  luaU_setfield(L, -1, "vibraphone", static_cast<int>(Instrument::Vibraphone));
+  luaU_setfield(L, -1, "marimba", static_cast<int>(Instrument::Marimba));
+  luaU_setfield(L, -1, "xylophone", static_cast<int>(Instrument::Xylophone));
+  luaU_setfield(L, -1, "tubularbells",
+                static_cast<int>(Instrument::Tubular_Bells));
+  luaU_setfield(L, -1, "dulcimer", static_cast<int>(Instrument::Dulcimer));
+  luaU_setfield(L, -1, "drawbarorgan",
+                static_cast<int>(Instrument::Drawbar_Organ));
+  luaU_setfield(L, -1, "percussiveorgan",
+                static_cast<int>(Instrument::Percussive_Organ));
+  luaU_setfield(L, -1, "rockorgan", static_cast<int>(Instrument::Rock_Organ));
+  luaU_setfield(L, -1, "churchorgan",
+                static_cast<int>(Instrument::Church_Organ));
+  luaU_setfield(L, -1, "reedorgan", static_cast<int>(Instrument::Reed_Organ));
+  luaU_setfield(L, -1, "accoridan", static_cast<int>(Instrument::Accoridan));
+  luaU_setfield(L, -1, "harmonica", static_cast<int>(Instrument::Harmonica));
+  luaU_setfield(L, -1, "tangoaccordian",
+                static_cast<int>(Instrument::Tango_Accordian));
+  luaU_setfield(L, -1, "acousticguitarnylon",
+                static_cast<int>(Instrument::Acoustic_Guitar_Nylon));
+  luaU_setfield(L, -1, "acousticguitarsteel",
+                static_cast<int>(Instrument::Acoustic_Guitar_Steel));
+  luaU_setfield(L, -1, "electricguitarjazz",
+                static_cast<int>(Instrument::Electric_Guitar_Jazz));
+  luaU_setfield(L, -1, "electricguitarclean",
+                static_cast<int>(Instrument::Electric_Guitar_Clean));
+  luaU_setfield(L, -1, "electricguitarmuted",
+                static_cast<int>(Instrument::Electric_Guitar_Muted));
+  luaU_setfield(L, -1, "overdrivenguitar",
+                static_cast<int>(Instrument::Overdriven_Guitar));
+  luaU_setfield(L, -1, "distortionguitar",
+                static_cast<int>(Instrument::Distortion_Guitar));
+  luaU_setfield(L, -1, "guitarharmonics",
+                static_cast<int>(Instrument::Guitar_Harmonics));
+  luaU_setfield(L, -1, "acousticbass",
+                static_cast<int>(Instrument::Acoustic_Bass));
+  luaU_setfield(L, -1, "electricbassfinger",
+                static_cast<int>(Instrument::Electric_Bassfinger));
+  luaU_setfield(L, -1, "electricbasspick",
+                static_cast<int>(Instrument::Electric_Basspick));
+  luaU_setfield(L, -1, "fretlessbass",
+                static_cast<int>(Instrument::Fretless_Bass));
+  luaU_setfield(L, -1, "slapbass1", static_cast<int>(Instrument::Slap_Bass_1));
+  luaU_setfield(L, -1, "slapbass2", static_cast<int>(Instrument::Slap_Bass_2));
+  luaU_setfield(L, -1, "synthbass1",
+                static_cast<int>(Instrument::Synth_Bass_1));
+  luaU_setfield(L, -1, "synthbass2",
+                static_cast<int>(Instrument::Synth_Bass_2));
+  luaU_setfield(L, -1, "violin", static_cast<int>(Instrument::Violin));
+  luaU_setfield(L, -1, "viola", static_cast<int>(Instrument::Viola));
+  luaU_setfield(L, -1, "cello", static_cast<int>(Instrument::Cello));
+  luaU_setfield(L, -1, "contrabass", static_cast<int>(Instrument::Contrabass));
+  luaU_setfield(L, -1, "tremolostrings",
+                static_cast<int>(Instrument::Tremolo_Strings));
+  luaU_setfield(L, -1, "pizzicatostrings",
+                static_cast<int>(Instrument::Pizzicato_Strings));
+  luaU_setfield(L, -1, "orchestralstrings",
+                static_cast<int>(Instrument::Orchestral_Strings));
+  luaU_setfield(L, -1, "timpani", static_cast<int>(Instrument::Timpani));
+  luaU_setfield(L, -1, "stringensemble1",
+                static_cast<int>(Instrument::String_Ensemble_1));
+  luaU_setfield(L, -1, "stringensemble2",
+                static_cast<int>(Instrument::String_Ensemble_2));
+  luaU_setfield(L, -1, "synthstrings1",
+                static_cast<int>(Instrument::SynthStrings_1));
+  luaU_setfield(L, -1, "synthstrings2",
+                static_cast<int>(Instrument::SynthStrings_2));
+  luaU_setfield(L, -1, "choiraahs", static_cast<int>(Instrument::Choir_Aahs));
+  luaU_setfield(L, -1, "voiceoohs", static_cast<int>(Instrument::Voice_Oohs));
+  luaU_setfield(L, -1, "synthvoice", static_cast<int>(Instrument::Synth_Voice));
+  luaU_setfield(L, -1, "orchestrahit",
+                static_cast<int>(Instrument::Orchestra_Hit));
+  luaU_setfield(L, -1, "trumpet", static_cast<int>(Instrument::Trumpet));
+  luaU_setfield(L, -1, "trombone", static_cast<int>(Instrument::Trombone));
+  luaU_setfield(L, -1, "tuba", static_cast<int>(Instrument::Tuba));
+  luaU_setfield(L, -1, "mutedtrumpet",
+                static_cast<int>(Instrument::Muted_Trumpet));
+  luaU_setfield(L, -1, "frenchhorn", static_cast<int>(Instrument::French_Horn));
+  luaU_setfield(L, -1, "brasssection",
+                static_cast<int>(Instrument::Brass_Section));
+  luaU_setfield(L, -1, "synthbrass1",
+                static_cast<int>(Instrument::SynthBrass_1));
+  luaU_setfield(L, -1, "synthbrass2",
+                static_cast<int>(Instrument::SynthBrass_2));
+  luaU_setfield(L, -1, "sopranosax", static_cast<int>(Instrument::Soprano_Sax));
+  luaU_setfield(L, -1, "altosax", static_cast<int>(Instrument::Alto_Sax));
+  luaU_setfield(L, -1, "tenorsax", static_cast<int>(Instrument::Tenor_Sax));
+  luaU_setfield(L, -1, "baritonesax",
+                static_cast<int>(Instrument::Baritone_Sax));
+  luaU_setfield(L, -1, "oboe", static_cast<int>(Instrument::Oboe));
+  luaU_setfield(L, -1, "englishhorn",
+                static_cast<int>(Instrument::English_Horn));
+  luaU_setfield(L, -1, "bassoon", static_cast<int>(Instrument::Bassoon));
+  luaU_setfield(L, -1, "clarinet", static_cast<int>(Instrument::Clarinet));
+  luaU_setfield(L, -1, "piccolo", static_cast<int>(Instrument::Piccolo));
+  luaU_setfield(L, -1, "flute", static_cast<int>(Instrument::Flute));
+  luaU_setfield(L, -1, "recorder", static_cast<int>(Instrument::Recorder));
+  luaU_setfield(L, -1, "panflute", static_cast<int>(Instrument::Pan_Flute));
+  luaU_setfield(L, -1, "blownbottle",
+                static_cast<int>(Instrument::Blown_Bottle));
+  luaU_setfield(L, -1, "skakuhachi", static_cast<int>(Instrument::Skakuhachi));
+  luaU_setfield(L, -1, "whistle", static_cast<int>(Instrument::Whistle));
+  luaU_setfield(L, -1, "ocarina", static_cast<int>(Instrument::Ocarina));
+  luaU_setfield(L, -1, "lead1square",
+                static_cast<int>(Instrument::Lead_1_Square));
+  luaU_setfield(L, -1, "lead2sawtooth",
+                static_cast<int>(Instrument::Lead_2_Sawtooth));
+  luaU_setfield(L, -1, "lead3calliope",
+                static_cast<int>(Instrument::Lead_3_Calliope));
+  luaU_setfield(L, -1, "lead4chiff",
+                static_cast<int>(Instrument::Lead_4_Chiff));
+  luaU_setfield(L, -1, "lead5charang",
+                static_cast<int>(Instrument::Lead_5_Charang));
+  luaU_setfield(L, -1, "lead6voice",
+                static_cast<int>(Instrument::Lead_6_Voice));
+  luaU_setfield(L, -1, "lead7fifths",
+                static_cast<int>(Instrument::Lead_7_Fifths));
+  luaU_setfield(L, -1, "lead8basslead",
+                static_cast<int>(Instrument::Lead_8_Bass_Lead));
+  luaU_setfield(L, -1, "pad1new_age",
+                static_cast<int>(Instrument::Pad_1_New_Age));
+  luaU_setfield(L, -1, "pad2warm", static_cast<int>(Instrument::Pad_2_Warm));
+  luaU_setfield(L, -1, "pad3polysynth",
+                static_cast<int>(Instrument::Pad_3_Polysynth));
+  luaU_setfield(L, -1, "pad4choir", static_cast<int>(Instrument::Pad_4_Choir));
+  luaU_setfield(L, -1, "pad5bowed", static_cast<int>(Instrument::Pad_5_Bowed));
+  luaU_setfield(L, -1, "pad6metallic",
+                static_cast<int>(Instrument::Pad_6_Metallic));
+  luaU_setfield(L, -1, "pad7halo", static_cast<int>(Instrument::Pad_7_Halo));
+  luaU_setfield(L, -1, "pad8sweep", static_cast<int>(Instrument::Pad_8_Sweep));
+  luaU_setfield(L, -1, "fx1rain", static_cast<int>(Instrument::FX_1_Rain));
+  luaU_setfield(L, -1, "fx2soundtrack",
+                static_cast<int>(Instrument::FX_2_Soundtrack));
+  luaU_setfield(L, -1, "fx3crystal",
+                static_cast<int>(Instrument::FX_3_Crystal));
+  luaU_setfield(L, -1, "fx4atmosphere",
+                static_cast<int>(Instrument::FX_4_Atmosphere));
+  luaU_setfield(L, -1, "fx5brightness",
+                static_cast<int>(Instrument::FX_5_Brightness));
+  luaU_setfield(L, -1, "fx6goblins",
+                static_cast<int>(Instrument::FX_6_Goblins));
+  luaU_setfield(L, -1, "fx7echoes", static_cast<int>(Instrument::FX_7_Echoes));
+  luaU_setfield(L, -1, "fx8scifi", static_cast<int>(Instrument::FX_8_Scifi));
+  luaU_setfield(L, -1, "sitar", static_cast<int>(Instrument::Sitar));
+  luaU_setfield(L, -1, "banjo", static_cast<int>(Instrument::Banjo));
+  luaU_setfield(L, -1, "shamisen", static_cast<int>(Instrument::Shamisen));
+  luaU_setfield(L, -1, "koto", static_cast<int>(Instrument::Koto));
+  luaU_setfield(L, -1, "kalimba", static_cast<int>(Instrument::Kalimba));
+  luaU_setfield(L, -1, "bagpipe", static_cast<int>(Instrument::Bagpipe));
+  luaU_setfield(L, -1, "fiddle", static_cast<int>(Instrument::Fiddle));
+  luaU_setfield(L, -1, "shanai", static_cast<int>(Instrument::Shanai));
+  luaU_setfield(L, -1, "tinklebell", static_cast<int>(Instrument::Tinkle_Bell));
+  luaU_setfield(L, -1, "agogo", static_cast<int>(Instrument::Agogo));
+  luaU_setfield(L, -1, "steeldrums", static_cast<int>(Instrument::Steel_Drums));
+  luaU_setfield(L, -1, "woodblock", static_cast<int>(Instrument::Woodblock));
+  luaU_setfield(L, -1, "taikodrum", static_cast<int>(Instrument::Taiko_Drum));
+  luaU_setfield(L, -1, "melodictom", static_cast<int>(Instrument::Melodic_Tom));
+  luaU_setfield(L, -1, "synthdrum", static_cast<int>(Instrument::Synth_Drum));
+  luaU_setfield(L, -1, "reversecymbal",
+                static_cast<int>(Instrument::Reverse_Cymbal));
+  luaU_setfield(L, -1, "guitarfret_noise",
+                static_cast<int>(Instrument::Guitar_Fret_Noise));
+  luaU_setfield(L, -1, "breathnoise",
+                static_cast<int>(Instrument::Breath_Noise));
+  luaU_setfield(L, -1, "seashore", static_cast<int>(Instrument::Seashore));
+  luaU_setfield(L, -1, "birdtweet", static_cast<int>(Instrument::Bird_Tweet));
+  luaU_setfield(L, -1, "telephonering",
+                static_cast<int>(Instrument::Telephone_Ring));
+  luaU_setfield(L, -1, "helicopter", static_cast<int>(Instrument::Helicopter));
+  luaU_setfield(L, -1, "applause", static_cast<int>(Instrument::Applause));
+  luaU_setfield(L, -1, "gunshot", static_cast<int>(Instrument::Gunshot));
+  return 1;
 }

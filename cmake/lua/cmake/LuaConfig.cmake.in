@@ -1,0 +1,7 @@
+get_filename_component(LUA_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+
+if(NOT TARGET lua::lua)
+    include("${LUA_CMAKE_DIR}/LuaTargets.cmake")
+endif()
+
+set(LUA_LIBRARIES lua::lua)
