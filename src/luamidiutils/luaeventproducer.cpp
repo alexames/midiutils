@@ -1,4 +1,4 @@
-#include <iostream>
+
 #include <optional>
 #include <string>
 
@@ -6,6 +6,7 @@
 #include "LuaWrapperUtil.hpp"
 #include "luamidiutils.hpp"
 #include "midiutils.hpp"
+#include "spdlog/spdlog.h"
 
 extern "C" {
 #include "lauxlib.h"
@@ -18,54 +19,47 @@ using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-unsigned int luamidievent_getvelocity(lua_State* L, int index,
-                                      const char* field) {
-  double value = luaU_getfield<unsigned int>(L, index, field);
-  if (value < 0)
-    return 0;
-  else if (value <= 1)
-    return static_cast<unsigned int>(0x7F * value);
-  else
-    return 0x7F;
+uint8_t luamidievent_getvelocity(lua_State* L, int index, const char* field) {
+  return std::clamp(static_cast<uint8_t>(0x7F * luaU_getfield<double>(L, index, field)),
+                    uint8_t{0}, uint8_t{0x7F});
 }
 
 template <>
 inline midi::Event luaU_check<>(lua_State* L, int index) {
   midi::Event event;
-  event.timeDelta = luaU_getfield<unsigned int>(L, index, "timedelta");
+  event.timeDelta = luaU_getfield<uint32_t>(L, index, "timedelta");
   event.command =
       static_cast<Event::Command>(luaU_getfield<int>(L, index, "command"));
-  event.channel = luaU_getfield<unsigned int>(L, index, "channel");
+  event.channel = luaU_getfield<uint32_t>(L, index, "channel");
   switch (event.command) {
     case Event::Command::NoteEnd:
-      event.noteEnd.noteNumber =
-          luaU_getfield<unsigned int>(L, index, "notenumber");
+      event.noteEnd.noteNumber = luaU_getfield<uint8_t>(L, index, "notenumber");
       event.noteEnd.velocity = luamidievent_getvelocity(L, index, "velocity");
       break;
     case Event::Command::NoteBegin:
       event.noteBegin.noteNumber =
-          luaU_getfield<unsigned int>(L, index, "notenumber");
+          luaU_getfield<uint8_t>(L, index, "notenumber");
       event.noteBegin.velocity = luamidievent_getvelocity(L, index, "velocity");
       break;
     case Event::Command::VelocityChange:
       event.velocityChange.noteNumber =
-          luaU_getfield<unsigned int>(L, index, "notenumber");
+          luaU_getfield<uint8_t>(L, index, "notenumber");
       event.velocityChange.velocity =
           luamidievent_getvelocity(L, index, "velocity");
       break;
     case Event::Command::ControllerChange:
       event.controllerChange.controllerNumber =
-          luaU_getfield<unsigned int>(L, index, "controllernumber");
+          luaU_getfield<uint8_t>(L, index, "controllernumber");
       event.controllerChange.velocity =
           luamidievent_getvelocity(L, index, "velocity");
       break;
     case Event::Command::ProgramChange:
       event.programChange.newProgramNumber =
-          luaU_getfield<unsigned int>(L, index, "programnumber");
+          luaU_getfield<uint8_t>(L, index, "programnumber");
       break;
     case Event::Command::ChannelPressureChange:
       event.channelPressureChange.channelNumber =
-          luaU_getfield<unsigned int>(L, index, "channelnumber");
+          luaU_getfield<uint8_t>(L, index, "channelnumber");
       break;
     case Event::Command::PitchWheelChange:
       break;
@@ -79,11 +73,15 @@ lua_State* LuaEventProducer_prepareLuaState(const char* filename) {
   lua_State* L = luaL_newstate();
   luaL_openlibs(L);
 
-  luamidiutils_pushCommandEnums(L);
-  lua_setglobal(L, "commands");
+  lua_newtable(L);  // {}
 
-  luamidiutils_pushInstrumentEnums(L);
-  lua_setglobal(L, "instruments");
+  luamidiutils_pushCommandEnums(L);  // {} commands
+  lua_setfield(L, -2, "commands");   // {}
+
+  luamidiutils_pushInstrumentEnums(L);  // {} instruments
+  lua_setfield(L, -2, "instruments");   // {}
+
+  lua_setglobal(L, "midi");
 
   if (luaL_dofile(L, filename)) {
     exception ex(lua_tostring(L, -1));
@@ -94,9 +92,9 @@ lua_State* LuaEventProducer_prepareLuaState(const char* filename) {
   return L;
 }
 
-unsigned int LuaEventProducer_getTicksPerBeat(lua_State* L) {
+uint32_t LuaEventProducer_getTicksPerBeat(lua_State* L) {
   lua_getglobal(L, "ticksperbeat");
-  unsigned int ticksPerBeat = lua_tointeger(L, -1);
+  uint32_t ticksPerBeat = lua_tointeger(L, -1);
   lua_pop(L, 1);
   return ticksPerBeat ? ticksPerBeat : 96;
 }
@@ -111,13 +109,11 @@ LuaEventProducer::~LuaEventProducer() { lua_close(m_L); }
 void LuaEventProducer_handleMessages(lua_State* L,
                                      deque<string>& pendingMessages) {
   lua_getglobal(L, "handlemessage");
-  lua_getglobal(L, "context");
   for (auto str : pendingMessages) {
-    lua_pushvalue(L, -2);
-    lua_pushvalue(L, -2);
     lua_pushstring(L, str.c_str());
-    if (lua_pcall(L, 2, 0, 0)) {
-      printf("LuaEventProducer_handleMessages: %s\n", lua_tostring(L, -1));
+    if (lua_pcall(L, 1, 0, 0)) {
+      spdlog::error("LuaEventProducer_handleMessages: {}\n",
+                    lua_tostring(L, -1));
       lua_pop(L, 1);
     }
   }
@@ -126,9 +122,8 @@ void LuaEventProducer_handleMessages(lua_State* L,
 
 void LuaEventProducer_prepareEvents(lua_State* L) {
   lua_getglobal(L, "prepareevents");
-  lua_getglobal(L, "context");
-  if (lua_pcall(L, 1, 0, 0)) {
-    printf("LuaEventProducer_prepareEvents: %s\n", lua_tostring(L, -1));
+  if (lua_pcall(L, 0, 0, 0)) {
+    spdlog::error("LuaEventProducer_prepareEvents: {}\n", lua_tostring(L, -1));
     lua_pop(L, 1);
   }
 }
@@ -138,11 +133,9 @@ void LuaEventProducer::preBufferFill() {
   LuaEventProducer_prepareEvents(m_L);
 }
 
-const std::optional<Event> LuaEventProducer::getNextEvent(
-    unsigned int& absoluteTime) {
+const std::optional<Event> LuaEventProducer::getNextEvent() {
   lua_getglobal(m_L, "getnextevent");
-  lua_getglobal(m_L, "context");
-  if (lua_pcall(m_L, 1, 1, 0) == 0) {
+  if (lua_pcall(m_L, 0, 1, 0) == 0) {
     if (lua_istable(m_L, -1)) {
       auto event = luaU_check<midi::Event>(m_L, -1);
       lua_pop(m_L, 1);
@@ -151,13 +144,14 @@ const std::optional<Event> LuaEventProducer::getNextEvent(
       lua_pop(m_L, 1);
     }
   } else {
-    printf("LuaEventProducer::getNextEvent: %s\n", lua_tostring(m_L, -1));
+    spdlog::error("LuaEventProducer::getNextEvent: {}\n",
+                  lua_tostring(m_L, -1));
     lua_pop(m_L, 1);
   }
   return std::nullopt;
 }
 
-unsigned int LuaEventProducer::getTicksPerBeat() { return m_ticksPerBeat; }
+uint32_t LuaEventProducer::getTicksPerBeat() { return m_ticksPerBeat; }
 
 void LuaEventProducer::pushMessage(string message) {
   m_pendingMessages.push_back(message);

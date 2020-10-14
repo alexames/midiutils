@@ -361,8 +361,7 @@ class EventProducer {
   // until a null pointer is returned. When a null pointer is encountered,
   // the buffered events are played and getNextEvent is not called again
   // until the buffered notes have been played.
-  virtual const std::optional<midi::Event> getNextEvent(
-      uint32_t& absoluteTime) = 0;
+  virtual const std::optional<midi::Event> getNextEvent() = 0;
 
   // Returns the ticks per beat.
   virtual uint32_t getTicksPerBeat() = 0;
@@ -376,7 +375,7 @@ class MidiFileEventProducer : public EventProducer {
   MidiFileEventProducer(MidiFile& midi);
   ~MidiFileEventProducer() override;
 
-  const std::optional<Event> getNextEvent(uint32_t& absoluteTime) override;
+  const std::optional<Event> getNextEvent() override;
   uint32_t getTicksPerBeat() override;
 
  private:

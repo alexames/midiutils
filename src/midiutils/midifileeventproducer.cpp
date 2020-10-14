@@ -27,8 +27,7 @@ static const Event* getNextEventInTrack(const Track& track, uint32_t& index,
   return nullptr;
 }
 
-const optional<Event> MidiFileEventProducer::getNextEvent(
-    uint32_t& absoluteTime) {
+const optional<Event> MidiFileEventProducer::getNextEvent() {
   const Event* bestEvent = nullptr;
   uint32_t bestTime = numeric_limits<uint32_t>::max();
   for (uint32_t i = 0; i < m_midi->tracks.size(); i++) {
@@ -40,7 +39,6 @@ const optional<Event> MidiFileEventProducer::getNextEvent(
       bestTime = m_absoluteTimes[i];
     }
   }
-  absoluteTime = bestTime;
   return bestEvent ? optional<Event>{*bestEvent} : std::nullopt;
 }
 

@@ -1,7 +1,10 @@
 #include "midiutils.hpp"
 
 #define NOMINMAX  // Who's idea was it to define a 'max' macro all lowercase?
+#include <algorithm>
 #include <vector>
+
+#include "spdlog/spdlog.h"
 
 // clang-format off
 #include "windows.h"
@@ -23,7 +26,7 @@ struct MidiStreamImpl {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static void writeUInt32le(char*& out, unsigned int val) {
+static void writeUInt32le(uint8_t*& out, unsigned int val) {
   *out++ = static_cast<char>(val >> 0);
   *out++ = static_cast<char>(val >> 8);
   *out++ = static_cast<char>(val >> 16);
@@ -31,7 +34,7 @@ static void writeUInt32le(char*& out, unsigned int val) {
 }
 
 static void writeNoteEndEventToBuffer(const Event::NoteEndEvent& event,
-                                      char*& out, unsigned int& bytesFilled) {
+                                      uint8_t*& out, std::size_t& bytesFilled) {
   *out++ = event.noteNumber;
   *out++ = event.velocity;
   *out++ = 0;
@@ -39,7 +42,8 @@ static void writeNoteEndEventToBuffer(const Event::NoteEndEvent& event,
 }
 
 static void writeNoteBeginEventToBuffer(const Event::NoteBeginEvent& event,
-                                        char*& out, unsigned int& bytesFilled) {
+                                        uint8_t*& out,
+                                        std::size_t& bytesFilled) {
   *out++ = event.noteNumber;
   *out++ = event.velocity;
   *out++ = 0;
@@ -47,8 +51,8 @@ static void writeNoteBeginEventToBuffer(const Event::NoteBeginEvent& event,
 }
 
 static void writeVelocityChangeEventToBuffer(
-    const Event::VelocityChangeEvent& event, char*& out,
-    unsigned int& bytesFilled) {
+    const Event::VelocityChangeEvent& event, uint8_t*& out,
+    std::size_t& bytesFilled) {
   *out++ = event.noteNumber;
   *out++ = event.velocity;
   *out++ = 0;
@@ -56,8 +60,8 @@ static void writeVelocityChangeEventToBuffer(
 }
 
 static void writeControllerChangeEventToBuffer(
-    const Event::ControllerChangeEvent& event, char*& out,
-    unsigned int& bytesFilled) {
+    const Event::ControllerChangeEvent& event, uint8_t*& out,
+    std::size_t& bytesFilled) {
   *out++ = event.controllerNumber;
   *out++ = event.velocity;
   *out++ = 0;
@@ -65,8 +69,8 @@ static void writeControllerChangeEventToBuffer(
 }
 
 static void writeProgramChangeEventToBuffer(
-    const Event::ProgramChangeEvent& event, char*& out,
-    unsigned int& bytesFilled) {
+    const Event::ProgramChangeEvent& event, uint8_t*& out,
+    std::size_t& bytesFilled) {
   *out++ = event.newProgramNumber;
   *out++ = 0;
   *out++ = 0;
@@ -74,8 +78,8 @@ static void writeProgramChangeEventToBuffer(
 }
 
 static void writeChannelPressureChangeEventToBuffer(
-    const Event::ChannelPressureChangeEvent& event, char*& out,
-    unsigned int& bytesFilled) {
+    const Event::ChannelPressureChangeEvent& event, uint8_t*& out,
+    std::size_t& bytesFilled) {
   *out++ = event.channelNumber;
   *out++ = 0;
   *out++ = 0;
@@ -83,18 +87,17 @@ static void writeChannelPressureChangeEventToBuffer(
 }
 
 static void writePitchWheelChangeEventToBuffer(
-    const Event::PitchWheelChangeEvent& event, char*& out,
-    unsigned int& bytesFilled) {
+    const Event::PitchWheelChangeEvent& event, uint8_t*& out,
+    std::size_t& bytesFilled) {
   *out++ = 0;
   *out++ = 0;
   *out++ = 0;
   bytesFilled += 3;
 }
 
-static void writeMidiEventToBuffer(char*& out, const Event& event,
-                                   unsigned int timeDelta,
-                                   unsigned int& bytesFilled) {
-  writeUInt32le(out, timeDelta);
+static void writeMidiEventToBuffer(uint8_t*& out, const Event& event,
+                                   std::size_t& bytesFilled) {
+  writeUInt32le(out, event.timeDelta);
   writeUInt32le(out, 0x00000000);
   *out++ = static_cast<uint8_t>(event.command) | event.channel;
   bytesFilled += 9;
@@ -124,6 +127,7 @@ static void writeMidiEventToBuffer(char*& out, const Event& event,
                                          bytesFilled);
       break;
     default:
+      spdlog::error("Invalid command: {}", event.command);
       throw exception();
   }
 }
@@ -134,15 +138,16 @@ class MidiEventBuffer {
  public:
   MidiEventBuffer(EventProducer& producer);
   bool fillBuffer();
-  char* getReadyBuffer();
+  uint8_t* getReadyBuffer();
   int getBytesFilled();
 
  private:
   EventProducer* m_producer;
-  char m_eventDoubleBuffer[2][4096];
-  unsigned int m_bytesFilled[2];
+  uint8_t m_eventDoubleBuffer[2][4096];
+  std::size_t m_bytesFilled[2];
   int m_readyBufferIndex;
-  unsigned int m_lastEventTime;
+
+  std::vector<uint32_t> m_channelLastEventTimes;
 };
 
 MidiEventBuffer::MidiEventBuffer(EventProducer& producer)
@@ -150,27 +155,42 @@ MidiEventBuffer::MidiEventBuffer(EventProducer& producer)
       m_eventDoubleBuffer(),
       m_bytesFilled(),
       m_readyBufferIndex(0),
-      m_lastEventTime(0) {}
+      m_channelLastEventTimes{} {}
 
 bool MidiEventBuffer::fillBuffer() {
   m_readyBufferIndex = 1 - m_readyBufferIndex;
   m_bytesFilled[m_readyBufferIndex] = 0;
-  char* buffer = m_eventDoubleBuffer[m_readyBufferIndex];
-  bool songFinished = true;
+  auto* buffer = m_eventDoubleBuffer[m_readyBufferIndex];
   optional<Event> event;
-  unsigned int eventAbsoluteTime;
   m_producer->preBufferFill();
   while ((m_bytesFilled[m_readyBufferIndex] < 4000) &&
-         (event = m_producer->getNextEvent(eventAbsoluteTime))) {
-    songFinished = false;
-    writeMidiEventToBuffer(buffer, *event, eventAbsoluteTime - m_lastEventTime,
-                           m_bytesFilled[m_readyBufferIndex]);
-    m_lastEventTime = eventAbsoluteTime;
+         (event = m_producer->getNextEvent())) {
+    // Ensure that we are tracking all channels' absolute times.
+    if (event->channel >= m_channelLastEventTimes.size()) {
+      m_channelLastEventTimes.resize(event->channel + 1, 0);
+    }
+    // Get the absolute time of the current event
+    auto eventAbsoluteTime =
+        m_channelLastEventTimes[event->channel] + event->timeDelta;
+    // Get the absolute time of the most recent event.
+    auto lastEventAbsoluteTime = *std::max_element(
+        m_channelLastEventTimes.begin(), m_channelLastEventTimes.end());
+    // Update the absolute time in the cache.
+    m_channelLastEventTimes[event->channel] += event->timeDelta;
+    // Somehow got an event that has already passed. Do nothing on continue.
+    if (eventAbsoluteTime < lastEventAbsoluteTime) {
+      continue;
+    }
+    // When playing a midi event, delta time represents the time since the most
+    // recent event on any channel, not the most recent event on the event's
+    // channel.
+    event->timeDelta = eventAbsoluteTime - lastEventAbsoluteTime;
+    writeMidiEventToBuffer(buffer, *event, m_bytesFilled[m_readyBufferIndex]);
   }
-  return !songFinished;
+  return true;
 }
 
-char* MidiEventBuffer::getReadyBuffer() {
+uint8_t* MidiEventBuffer::getReadyBuffer() {
   return m_eventDoubleBuffer[m_readyBufferIndex];
 }
 

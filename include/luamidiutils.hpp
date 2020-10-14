@@ -21,7 +21,7 @@ public:
     ~LuaEventProducer() override;
 
     void preBufferFill() override;
-    const std::optional<midi::Event> getNextEvent(unsigned int& absoluteTime) override;
+    const std::optional<midi::Event> getNextEvent() override;
     unsigned int getTicksPerBeat() override;
     
     void pushMessage(std::string message);
