@@ -29,6 +29,7 @@ public:
 private:
     lua_State* m_L;
     midi::Event m_event;
+    int m_eventListRef;
     unsigned int m_ticksPerBeat;
     std::deque<std::string> m_pendingMessages;
 };
