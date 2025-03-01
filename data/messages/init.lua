@@ -11,4 +11,4 @@ function handlemessage(context, message)
     end
 end
 
-require 'messages/changeinstrument'
+require 'messages.changeinstrument'
